@@ -1,14 +1,12 @@
 ---
 title: "R demo and testing"
 author: "Alfred"
-date: "2026-01-09"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
-setwd("C:/R-statistics-analysis")
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -17,6 +15,11 @@ knitr::opts_chunk$set(
 )
 
 ```
+
+```{r}
+setwd("C:/R-statistics-analysis")
+```
+
 
 # Demo and testing of different things in R
 
@@ -30,34 +33,116 @@ This markdown file serves as an environment to review concepts and demo visualis
 
 library(ggplot2)
 
-x <- seq(-4, 8, length.out = 1000)
+x <- seq(-5, 5, length.out = 1000)
 
+df <- data.frame(
+  x = x,
+  density = dnorm(x, mean = 0, sd = 1)
+)
+
+# Positions for vertical lines
+vline_positions <- c(-3, -2, -1, 0, 1, 2, 3)
+
+# Data frame for vertical segments
+vline_df <- data.frame(
+  x = vline_positions,
+  y_start = -0.01,
+  y_end = dnorm(vline_positions, mean = 0, sd = 1)
+)
+
+ggplot(df, aes(x = x, y = density)) +
+  geom_line(linewidth = 1.2, color = "black") +
+  geom_segment(
+    data = vline_df,
+    aes(x = x, xend = x, y = y_start, yend = y_end),
+    linetype = c(2, 2, 2, 1, 2, 2, 2),    # dashed for -1 and 1, solid for 0
+    linewidth = 1,
+    color = "red"
+  ) +
+  scale_x_continuous(
+    breaks = c(-3, -2, -1, 0, 1, 2, 3),
+    labels = expression(-3*sigma, -2*sigma, -sigma, mu, +sigma, +2*sigma, +3*sigma)
+  ) +
+  labs(
+    title = expression("Normal Distribution with mean " * mu * " and " * sigma * "."),
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  )
+```
+
+
+```{r}
+
+library(ggplot2)
+
+x <- seq(-4, 8, length.out = 1000)
 
 df <- data.frame(
   x = rep(x, 3),
   density = c(
     dnorm(x, mean = 0, sd = 1),
-    dnorm(x, mean = 1.96, sd = 1),
-    dnorm(x, mean = 2 * 1.96, sd = 1)
+    dnorm(x, mean = 2, sd = 1),
+    dnorm(x, mean = 4, sd = 1)
   ),
-  distribution = factor(rep(
-    c("Mean = 0", "Mean = 1.96", "Mean = 3.92"),
-    each = length(x)
-  ))
+  distribution = factor(
+    rep(c("Mean = 0", "Mean = 2", "Mean = 4"), each = length(x))
+  )
 )
+
+# Data frame for vertical mean segments
+vline_df <- data.frame(
+  x = c(0, 2, 4),
+  mean = c(0, 2,4),
+  distribution = factor(
+    expression("Mean = 0", "Mean = 2", "Mean = 4"),
+    levels = levels(df$distribution)
+  )
+)
+
+# Segment start/end
+vline_df$y_start <- 0
+vline_df$y_end <- dnorm(vline_df$x, mean = vline_df$mean, sd = 1)
 
 ggplot(df, aes(x = x, y = density, color = distribution)) +
   geom_line(linewidth = 1.2) +
+  geom_segment(
+    data = vline_df,
+    aes(
+      x = x, xend = x,
+      y = y_start, yend = y_end,
+      color = distribution
+    ),
+    linewidth = 1,
+    linetype = "dashed"
+  ) +
   scale_x_continuous(
-    breaks = seq(-4, 8, by = 2)  # ticks every 1 unit from -4 to 4
+    breaks = c(0, 2, 4),
+    labels = expression(mu[R], mu[G], mu[B])
   ) +
   labs(
     title = "Multiple Normal Distributions",
-    x = "x",
-    y = NULL,             # Remove y-axis label
+    x = NULL,
+    y = NULL,
     color = "Distribution"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  )
 ```
 
 ## 1.2 Visualising probability as area under the curve
@@ -66,9 +151,66 @@ ggplot(df, aes(x = x, y = density, color = distribution)) +
 
 library(ggplot2)
 
+x <- seq(-5, 5, length.out = 1000)
+
+df <- data.frame(
+  x = x,
+  density = dnorm(x, mean = 0, sd = 1)
+)
+
+# Positions for vertical lines
+vline_positions <- c(-2, 2)
+
+# Data frame for vertical segments
+vline_df <- data.frame(
+  x = vline_positions,
+  y_start = -0.01,
+  y_end = dnorm(vline_positions, mean = 0, sd = 1)
+)
+
+ggplot(df, aes(x = x, y = density)) +
+  geom_line(linewidth = 1.2, color = "black") +
+  geom_ribbon(
+    data = subset(df, x >= -2 & x <= 2),
+    aes(x = x, ymin = 0, ymax = density),
+    alpha = 0.1,
+    inherit.aes = FALSE,
+    fill = "red"
+  ) +
+  geom_segment(
+    data = vline_df,
+    aes(x = x, xend = x, y = y_start, yend = y_end),
+    linetype = c(2, 2), # all dashed lines
+    linewidth = 1,
+    color = "red"
+  ) +
+  scale_x_continuous(
+    breaks = c(-2, 2),
+    labels = expression(-2*sigma, +2*sigma)
+  ) +
+  labs(
+    title = expression("95% of Data is Within " * ~"\u00B1 2 " * sigma * " of the Mean."),
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  ) +
+  annotate("text", x = 0, y = 0.15, label = "95%", color = "red", size = 6)
+```
+
+```{r}
+
+library(ggplot2)
+
 x <- seq(-4, 8, length.out = 1000)
 
-# Create combined data frame with two distributions
 df <- data.frame(
   x = rep(x, 2),
   density = c(
@@ -79,10 +221,7 @@ df <- data.frame(
 )
 
 ggplot(df, aes(x = x, y = density, color = distribution, fill = distribution)) +
-  # Lines for both distributions
   geom_line(linewidth = 1.2) +
-  
-  # Shaded area for first distribution (mean=0)
   geom_ribbon(
     data = subset(df, distribution == "Mean 0" & x >= -1.96 & x <= 1.96),
     aes(x = x, ymin = 0, ymax = density),
@@ -90,8 +229,6 @@ ggplot(df, aes(x = x, y = density, color = distribution, fill = distribution)) +
     inherit.aes = FALSE,
     fill = "blue"
   ) +
-  
-  # Shaded area for second distribution (mean=4)
   geom_ribbon(
     data = subset(df, distribution == "Mean 4" & x >= -1.96+4 & x <= 1.96+4),
     aes(x = x, ymin = 0, ymax = density),
@@ -99,20 +236,35 @@ ggplot(df, aes(x = x, y = density, color = distribution, fill = distribution)) +
     inherit.aes = FALSE,
     fill = "red"
   ) +
-  
   scale_color_manual(values = c("Mean 0" = "blue", "Mean 4" = "red")) +
   scale_fill_manual(values = c("Mean 0" = "blue", "Mean 4" = "red")) +
-  
   scale_x_continuous(
-    breaks = seq(-4, 8, by = 2)
+    breaks = c(-4, -2, 0, 2, 4, 6, 8),
+    labels = c(
+      "-4", "-2",
+      expression(mu[B]),
+      "2",
+      expression(mu[R]),
+      "6", "8"
+    )
   ) +
   labs(
     title = "Two Normal Distributions with Shaded Areas",
-    x = "x",
+    x = NULL,
     y = NULL,
     color = "Distribution"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  ) +
+  geom_vline(xintercept = 0, color = "blue", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed", linewidth = 1)
 
 ```
 
@@ -143,7 +295,13 @@ ggplot(df, aes(x = age, fill = group)) +
     y = "Count",
     fill = "Group"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black")
+  )
 
 ```
 
@@ -154,37 +312,40 @@ ggplot(df, aes(x = age, fill = group)) +
 x <- 0:20
 
 df <- data.frame(
-x = rep(x, 2),
-probability = c(
-dbinom(x, size = 20, prob = 0.3),
-dbinom(x, size = 20, prob = 0.6)
-),
-distribution = factor(rep(
-c("n = 20, p = 0.3", "n = 20, p = 0.6"),
-each = length(x)
-))
+    x = rep(x, 2),
+    probability = c(
+    dbinom(x, size = 20, prob = 0.3),
+    dbinom(x, size = 20, prob = 0.6)
+  ),
+  distribution = factor(rep(
+    c("n = 20, p = 0.3", "n = 20, p = 0.6"),
+    each = length(x)
+  ))
 )
 
 library(ggplot2)
 
 
 ggplot(df, aes(x = x, y = probability, color = distribution)) +
-geom_segment(
-aes(xend = x, y = 0, yend = probability),
-linewidth = 1,
-alpha = 0.5
-) +
-geom_point(size = 2) +
-labs(
-title = "Two Theoretical Binomial Distributions",
-x = "Number of successes",
-y = "Probability",
-color = "Distribution"
-) +
-theme_minimal()
-
-
-
+  geom_segment(
+  aes(xend = x, y = 0, yend = probability),
+    linewidth = 1,
+    alpha = 0.5
+  ) +
+  geom_point(size = 2) +
+  labs(
+    title = "Two Theoretical Binomial Distributions",
+    x = "Number of successes",
+    y = "Probability",
+    color = "Distribution"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
 ```
 
 ## 1.5 Exponential distribution
@@ -215,7 +376,13 @@ ggplot(df, aes(x = x, y = density, color = distribution)) +
     x = "Waiting time",
     y = "Density"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
 ```
 
 
@@ -237,9 +404,212 @@ We will see that the distribution is going to be approximately normal.
 We assume a fair die with numbers 1-6.
 
 ```{r}
-set.seed(1)
+set.seed(1) # for reproducibility
 
-n <- 100
+library(ggplot2)
+
+# Simulate 10 dice throws (values 1 to 6)
+throws <- sample(1:6, size = 10, replace = TRUE)
+
+# Calculate sample mean and SD
+mean_throws <- mean(throws)
+sd_throws <- sd(throws)
+
+# Create a data frame for plotting
+df <- data.frame(value = throws)
+
+# Plot histogram of throws with mean and SD lines
+ggplot(df, aes(x = value)) +
+  geom_histogram(binwidth = 1, boundary = 0.5, fill = "skyblue", color = "black") +
+  geom_vline(xintercept = mean_throws, color = "red", size = 1, linetype = "solid") +
+  geom_vline(xintercept = mean_throws + sd_throws, color = "red", size = 1, linetype = "dashed") +
+  geom_vline(xintercept = mean_throws - sd_throws, color = "red", size = 1, linetype = "dashed") +
+  labs(
+    title = "Distribution of 10 Dice Throws",
+    subtitle = paste0("Mean = ", round(mean_throws, 2), ", SD = ", round(sd_throws, 2)),
+    x = "Dice Value",
+    y = "Count"
+  ) +
+  scale_x_continuous(breaks = 1:6) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
+```
+
+```{r}
+set.seed(1) # for reproducibility
+
+library(ggplot2)
+
+# Simulate 100 dice throws (values 1 to 6)
+throws <- sample(1:6, size = 100, replace = TRUE)
+
+# Calculate sample mean and SD
+mean_throws <- mean(throws)
+sd_throws <- sd(throws)
+
+# Create a data frame for plotting
+df <- data.frame(value = throws)
+
+# Plot histogram of throws with mean and SD lines
+ggplot(df, aes(x = value)) +
+  geom_histogram(binwidth = 1, boundary = 0.5, fill = "skyblue", color = "black") +
+  geom_vline(xintercept = mean_throws, color = "red", size = 1, linetype = "solid") +
+  geom_vline(xintercept = mean_throws + sd_throws, color = "red", size = 1, linetype = "dashed") +
+  geom_vline(xintercept = mean_throws - sd_throws, color = "red", size = 1, linetype = "dashed") +
+  labs(
+    title = "Distribution of 100 Dice Throws",
+    subtitle = paste0("Mean = ", round(mean_throws, 2), ", SD = ", round(sd_throws, 2)),
+    x = "Dice Value",
+    y = "Count"
+  ) +
+  scale_x_continuous(breaks = 1:6) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
+```
+
+```{r}
+set.seed(1) # for reproducibility
+
+library(ggplot2)
+
+# Simulate 1000 dice throws (values 1 to 6)
+throws <- sample(1:6, size = 1000, replace = TRUE)
+
+# Calculate sample mean and SD
+mean_throws <- mean(throws)
+sd_throws <- sd(throws)
+
+# Create a data frame for plotting
+df <- data.frame(value = throws)
+
+# Plot histogram of throws with mean and SD lines
+ggplot(df, aes(x = value)) +
+  geom_histogram(binwidth = 1, boundary = 0.5, fill = "skyblue", color = "black") +
+  geom_vline(xintercept = mean_throws, color = "red", size = 1, linetype = "solid") +
+  geom_vline(xintercept = mean_throws + sd_throws, color = "red", size = 1, linetype = "dashed") +
+  geom_vline(xintercept = mean_throws - sd_throws, color = "red", size = 1, linetype = "dashed") +
+  labs(
+    title = "Distribution of 1000 Dice Throws",
+    subtitle = paste0("Mean = ", round(mean_throws, 2), ", SD = ", round(sd_throws, 2)),
+    x = "Dice Value",
+    y = "Count"
+  ) +
+  scale_x_continuous(breaks = 1:6) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
+```
+
+```{r}
+set.seed(12)
+
+n <- 10
+B_vals <- c(50)
+
+df <- data.frame()
+
+for (B in B_vals) {
+  sample_means <- numeric(B)
+  
+  for (i in 1:B) {
+    x <- sample(1:6, size = n, replace = TRUE)
+    sample_means[i] <- mean(x)
+  }
+  
+  df <- rbind(
+    df,
+    data.frame(
+      value = sample_means,
+      experiments = factor(B)
+    )
+  )
+}
+
+library(dplyr)
+
+stats <- df %>%
+  group_by(experiments) %>%
+  summarise(
+    mean_val = mean(value),
+    sd_val = sd(value)
+  )
+
+# Create a grid for normal curves
+normal_curves <- stats %>%
+  rowwise() %>%
+  do({
+    data.frame(
+      experiments = .$experiments,
+      x = seq(min(df$value), max(df$value), length.out = 100),
+      y = dnorm(
+        seq(min(df$value),
+            max(df$value),
+            length.out = 100),
+        mean = .$mean_val,
+        sd = .$sd_val)
+    )
+  }) %>%
+  ungroup()
+
+#experiments <- as.numeric(as.character(df$experiments))
+
+library(ggplot2)
+
+ggplot(df, aes(x = value)) +
+  geom_histogram(
+    aes(y = after_stat(density)),
+    bins = 10,
+    fill = "steelblue",
+    color = "black",
+    alpha = 0.6
+  ) +
+  geom_line(
+    data = normal_curves,
+    aes(x = x, y = y),
+    color = "red",
+    size = 1
+  ) +
+  facet_wrap(~ experiments, ncol = 3) +
+  labs(
+    title = "Sampling Distributions with n = 10 sample size",
+    subtitle = "Histograms with overlaid normal density",
+    x = "Sample mean",
+    y = "Density"
+  ) +
+  scale_x_continuous(breaks = seq(2, 5, by = 0.25)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
+```
+
+
+
+```{r}
+set.seed(12)
+
+n <- 10
 B_vals <- c(5, 10, 20, 30, 50, 100, 200, 500, 1000)
 
 df <- data.frame()
@@ -277,7 +647,12 @@ normal_curves <- stats %>%
     data.frame(
       experiments = .$experiments,
       x = seq(min(df$value), max(df$value), length.out = 100),
-      y = dnorm(seq(min(df$value), max(df$value), length.out = 100), mean = .$mean_val, sd = .$sd_val)
+      y = dnorm(
+        seq(min(df$value),
+            max(df$value),
+            length.out = 100),
+        mean = .$mean_val,
+        sd = .$sd_val)
     )
   }) %>%
   ungroup()
@@ -302,14 +677,20 @@ ggplot(df, aes(x = value)) +
   ) +
   facet_wrap(~ experiments, ncol = 3) +
   labs(
-    title = "Sampling Distributions with n = 100 sample size",
+    title = "Sampling Distributions with n = 10 sample size",
     subtitle = "Histograms with overlaid normal density",
     x = "Sample mean",
     y = "Density"
   ) +
-  scale_x_continuous(breaks = seq(3, 4, by = 0.25)) +
-  theme_minimal()
-
+  scale_x_continuous(breaks = seq(2, 5, by = 1.5)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+  )
 ```
 So based on this evolution of the distribution, the most common value of the average seems to be around 3.5.
 

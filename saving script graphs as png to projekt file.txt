@@ -1,0 +1,4 @@
+
+you can export the graph as PNG to the "bilder" directory in "vetenskap-projekt" directly.
+
+use 600 width and 300 height for all graphs
