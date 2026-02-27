@@ -305,6 +305,80 @@ ggplot(df, aes(x = age, fill = group)) +
 
 ```
 
+```{r}
+
+set.seed(123)
+
+# 1. Sample data
+N <- 500
+x <- rnorm(N, mean = 0, sd = 1)
+
+# Small vertical jitter so points don't overlap
+y_jitter <- runif(N, min = -0.02, max = 0.02)
+
+# 2. Empirical density via bins
+dx <- 0.2
+breaks <- seq(
+  from = floor(min(x)),
+  to   = ceiling(max(x)),
+  by   = dx
+)
+
+h <- hist(x, breaks = breaks, plot = FALSE)
+
+emp_density <- h$counts / (N * dx)
+mids <- h$mids
+
+# 3. Plot setup
+plot(
+  x, y_jitter,
+  pch = 16,
+  col = rgb(0, 0, 0, 0.3),
+  xlab = "x",
+  ylab = "Density",
+  ylim = c(-0.05, max(emp_density) * 1.2),
+  main = "Samples, Empirical Density, and Theoretical N(0,1)"
+)
+
+# 4. Empirical density as a solid line
+lines(
+  mids, emp_density,
+  col = "steelblue",
+  lwd = 2
+)
+
+# 5. Theoretical density
+curve(
+  dnorm(x, mean = 0, sd = 1),
+  from = min(breaks),
+  to   = max(breaks),
+  add = TRUE,
+  col = "red",
+  lwd = 2,
+  lty = 2
+)
+
+# 6. Legend
+legend(
+  "topright",
+  legend = c(
+    "Sample points",
+    "Empirical density (binned)",
+    "Theoretical N(0,1)"
+  ),
+  col = c(
+    rgb(0, 0, 0, 0.5),
+    "steelblue",
+    "red"
+  ),
+  lwd = c(NA, 2, 2),
+  lty = c(NA, 1, 2),
+  pch = c(16, NA, NA),
+  bty = "n"
+)
+```
+
+
 ## 1.4 Binomial distribution
 
 ```{r}
