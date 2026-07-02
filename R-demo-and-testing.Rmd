@@ -867,23 +867,32 @@ ggplot(km_data, aes(x = time, y = surv, color = strata, fill = strata)) +
 
 ```
 
-# 4. Comparing two groups
+# 4. Comparing groups
 
-Measuring e.g. a continuous variable in two groups and visualising the measurements in each group.
+Measuring e.g. a continuous variable in several groups and visualising the measurements in each group.
 
 ```{r}
 set.seed(11)
 
-# Sample size in both groups
-n <- 10
+# Sample size in groups
+n <- 20
 
-A <- rnorm(n, mean = 9, sd = 3)
-B <- rnorm(n, mean = 12, sd = 3)
+A <- rnorm(n, mean = 25, sd = 5)
+B <- rnorm(n, mean = 20, sd = 5)
+C <- rnorm(n, mean = 15, sd = 5)
 
 df <- data.frame(
-  value = c(A, B),
-  group = factor(rep(c("A", "B"), each = n))
+  value = c(A, B, C),
+  group = factor(rep(c("A", "B", "C"), each = n))
 )
+
+summary_df <- data.frame(
+  group = c("A", "B", "C"),
+  mean  = c(mean(A), mean(B), mean(C)),
+  sd    = c(sd(A), sd(B), sd(C))
+)
+
+summary_df
 ```
 
 ## 4.1 Raw data points
@@ -896,7 +905,7 @@ library(ggplot2)
 ggplot(df, aes(x = group, y = value)) +
   geom_jitter(width = 0.1, alpha = 1) +
   labs(
-    title = "Comparison of Two Normally Distributed Groups, Data Points",
+    title = "Comparison of Normally Distributed Groups, Data Points",
     x = "Group",
     y = "Value"
   ) +
@@ -922,21 +931,69 @@ ggplot(df, aes(x = group, y = value)) +
     color = "red"
   ) +
   labs(
-    title = "Comparison of Two Normally Distributed Groups, Mean ± SD",
+    title = "Comparison of Normally Distributed Groups, Mean and SD",
     x = "Group",
     y = "Value"
   ) +
   theme_minimal()
 ```
 
-## 4.3 Box plot with median, 25%, 75% and min/max values.
+
+## 4.3 Raw data, mean as bar chart, and SD bars.
+
+```{r}
+library(ggplot2)
+
+ggplot() +
+
+  # Bar showing the mean
+  geom_bar(data = summary_df,
+           aes(x = group, y = mean, fill = group),
+           stat = "identity",
+           width = 0.6,
+           alpha = 0.9,
+           color = "black") +
+
+  # Error bars ± SD
+  geom_errorbar(data = summary_df,
+                aes(x = group, ymin = mean - sd, ymax = mean + sd),
+                width = 0.2,
+                linewidth = 1,
+                color = "black") +
+
+  # Raw data points with black outline
+  geom_jitter(data = df,
+              aes(x = group, y = value, fill = group),
+              width = 0.1,
+              size = 3,
+              alpha = 0.9,
+              shape = 21,
+              color = "black") +
+
+  # Labels
+  labs(
+    title = "Raw data, means and SDs",
+    x = "Group",
+    y = "Value"
+  ) +
+
+  # Theme
+  theme_minimal() +
+  theme(
+    legend.position = "none"
+  )
+```
+
+
+
+## 4.4 Box plot with median, 25%, 75% and min/max values.
 
 ```{r}
 # Boxplot
 ggplot(df, aes(x = group, y = value)) +
   geom_boxplot(fill = "orange", size = 0.5, outlier.shape = NA, coef = Inf) +
   labs(
-    title = "Comparison of Two Normally Distributed Groups, Boxplots",
+    title = "Comparison of Normally Distributed Groups, Boxplots",
     x = "Group",
     y = "Value"
   ) +
@@ -1182,4 +1239,253 @@ ggplot(df_mod, aes(x = x, y = y)) +
 ```
 
 As seen, the outliers manage to invert the correlation value.
+
+# 6. Effect of plot axis scaling on perceived impressiveness
+
+How a small, unimportant difference between groups can be made to look more impressive than it is.
+
+## 6.1 Association between disease incidence and lifestyle factors
+
+Let's take a hypothetical scenario where we compare two groups in terms of association between all-cause mortality and number of carrots consumed per week.
+
+### 6.1.1 Incidence proportion
+
+We get the following incidence proportion results from the two groups:
+```{r}
+# Create a 2x2 contingency table
+
+table_carrots <- matrix(
+  c(48, 952,   # 1 carrot/week
+    32, 958),  # >3 carrots/week
+  nrow = 2,
+  byrow = TRUE
+)
+
+# Add labels
+rownames(table_carrots) <- c("1 carrot/week", ">3 carrots/week")
+colnames(table_carrots) <- c("Mortality", "No mortality")
+
+# Add marginal totals
+table_with_totals <- addmargins(table_carrots)
+dimnames(table_with_totals)[[1]][3] <- "Total"
+dimnames(table_with_totals)[[2]][3] <- "Total"
+
+table_with_totals
+
+# Incidence proportion in each group (exclude totals)
+incidence <- table_with_totals[1:2, "Mortality"] / rowSums(table_with_totals[1:2, ])
+
+incidence
+
+df_incidence <- data.frame(
+  group = c("1 carrot/week", ">3 carrots/week"),
+  incidence = incidence
+)
+
+df_incidence
+```
+First plot just regularly, including a decent range from 0% to 15% incidence.
+```{r}
+library(ggplot2)
+
+ggplot(df_incidence, aes(x = group, y = incidence)) +
+  geom_bar(stat = "identity",
+           fill = "red",
+           alpha = 0.8,
+           width = 0.6) +
+  labs(
+    x = "Carrot consumption",
+    y = "Incidens proportion",
+    title = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+    
+  ) + coord_cartesian(ylim = c(0.01, 0.30))
+```
+Looks quite unimpressive. Let's exaggerate the y-axis scaling to make the difference look bigger.
+
+```{r}
+library(ggplot2)
+
+ggplot(df_incidence, aes(x = group, y = incidence)) +
+  geom_bar(stat = "identity",
+           fill = "red",
+           alpha = 0.8,
+           width = 0.6) +
+  labs(
+    x = "Carrot consumption",
+    y = "Incidens proportion",
+    title = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+    
+  ) + coord_cartesian(ylim = c(0.015, 0.025))
+```
+Wow, very dramatic effect!
+
+### 6.1.2 Incidence rate
+
+Now let's say this was a study that went on for 10 years. We compute indicence rates and plot them.
+```{r}
+# follow-up time
+years <- 10
+
+# group sizes
+n <- 1000
+
+# deaths
+deaths <- c(48, 32)
+
+# person-time
+person_time <- n * years
+
+# incidence rate
+incidence_rate <- deaths / person_time
+
+df_rate <- data.frame(
+  group = c("1 carrot/week", ">3 carrots/week"),
+  incidence_rate = incidence_rate
+)
+
+df_rate
+```
+
+Let's plot the survival curves based on this rate. First just a reasonably scaled y-axis.
+
+```{r}
+library(ggplot2)
+
+# incidence rates
+lambda1 <- df_rate[1,2]
+lambda2 <- df_rate[2,2]
+
+# time (years)
+t <- seq(0, 10, length.out = 200)
+
+# survival functions
+S1 <- exp(-lambda1 * t)
+S2 <- exp(-lambda2 * t)
+
+# dataframe for plotting
+df_survival <- data.frame(
+  time = rep(t, 2),
+  survival = c(S1, S2),
+  group = rep(c("1 carrot/week", ">3 carrots/week"), each = length(t))
+)
+
+# plot
+ggplot(df_survival, aes(x = time, y = survival, color = group)) +
+  geom_line(linewidth = 1.2) +
+  labs(
+    x = "Time (years)",
+    y = "Survival",
+    color = "Carrot consumption"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black")
+  ) + coord_cartesian(ylim = c(1.0, 0.01))
+```
+
+Looks really unimpressive. Let's change the y-axis scaling!
+```{r}
+library(ggplot2)
+
+# incidence rates
+lambda1 <- df_rate[1,2]
+lambda2 <- df_rate[2,2]
+
+# time (years)
+t <- seq(0, 10, length.out = 200)
+
+# survival functions
+S1 <- exp(-lambda1 * t)
+S2 <- exp(-lambda2 * t)
+
+# dataframe for plotting
+df_survival <- data.frame(
+  time = rep(t, 2),
+  survival = c(S1, S2),
+  group = rep(c("1 carrot/week", ">3 carrots/week"), each = length(t))
+)
+
+# plot
+ggplot(df_survival, aes(x = time, y = survival, color = group)) +
+  geom_line(linewidth = 1.2) +
+  labs(
+    x = "Time (years)",
+    y = "Survival",
+    color = "Carrot consumption"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black")
+  ) + coord_cartesian(ylim = c(1.0, 0.95))
+```
+Looks more impressive now.
+
+## 6.2 Transient response to a stimulus
+
+```{r}
+library(ggplot2)
+
+set.seed(42)
+
+# Time points
+time <- seq(0, 10, length.out = 20)
+
+# Transient response: small bump for stimulus group
+control <- 1 + 0*time + rnorm(length(time), 0, 0.01)  # flat baseline
+stimulus <- 1 + 0.2*exp(-0.5*(time - 3)^2) + rnorm(length(time), 0, 0.01)  # small bump at t ~ 3
+
+df_transient <- data.frame(
+  time = rep(time, 2),
+  value = c(control, stimulus),
+  group = rep(c("Control", "Stimulus"), each = length(time))
+)
+```
+
+Reasonable scaling on y-axis
+
+```{r}
+ggplot(df_transient, aes(x = time, y = value, color = group)) +
+  geom_line(linewidth = 1.2) +
+  labs(
+    x = "Time (h)",
+    y = "Measurement",
+    color = "Condition",
+    title = "Transient Response (Honest Axis)"
+  ) +
+  coord_cartesian(ylim = c(0.95, 2.05)) +
+  theme_minimal(base_size = 14)
+```
+
+Exaggerates the effect.
+
+```{r}
+ggplot(df_transient, aes(x = time, y = value, color = group)) +
+  geom_line(linewidth = 1.2) +
+  labs(
+    x = "Time (h)",
+    y = "Measurement",
+    color = "Condition",
+    title = "Transient Response (Exaggerated Axis)"
+  ) +
+  coord_cartesian(ylim = c(0.95, 1.2)) +  # truncates axis
+  theme_minimal(base_size = 14)
+```
 

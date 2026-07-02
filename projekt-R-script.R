@@ -656,6 +656,7 @@ ggplot(df, aes(x = x, y = density, fill = distribution)) +
   geom_segment(aes(x = 0, xend = 0, y = 0, yend = max(df$density)), color = "red", linetype = 1, linewidth = 1) +
   geom_segment(aes(x = 1.645, xend = 1.645, y = 0, yend = max(df$density)), color = "blue", linetype = 1, linewidth = 1) +
   annotate("text", x = 2.8, y = 0.06, label = expression(alpha == 0.05), color = "orange", size = 5)
+
 ##############################
 
 
@@ -840,7 +841,7 @@ ggplot(df, aes(x = x, y = density, fill = distribution)) +
                color = "brown", linetype = "dashed", linewidth = 1) +
   
   # Label "alpha = 0.05" near the top of the dashed line
-  annotate("text", x = crit_val + 0.2, y = crit_density, label = expression(alpha == 0.05),
+  annotate("text", x = crit_val + 0.2, y = 0.09, label = expression(alpha == 0.05),
            color = "brown", size = 5, hjust = 1.3, vjust = 4.0)
 
 ##############################
@@ -1168,40 +1169,1170 @@ ggplot(df, aes(x = group, y = mean)) +
 
 ##############################
 
-# Stewart pH 1
+# Exempel 1.1
+
+# Using 95% CIs (SE) for mean estimates and 95% interval for sample data (SD)
+
+# Compute summaries
+summary_df <- data.frame(
+  group = c("mean_A", "mean_B", "A", "B"),
+  mean  = c(0.875, 1.400, 0.875, 1.400),
+  sd    = 1.96*c(0.125, 0.200, 0.250, 0.400)
+)
+
+summary_df$type <- ifelse(grepl("mean", summary_df$group),
+                          "mean",
+                          "raw")
+
+# Plot
+ggplot(summary_df, aes(x = group, y = mean, fill = type)) +
+  geom_bar(stat = "identity",
+           alpha = 0.7,
+           width = 0.2) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.05,
+                color = "black",
+                linewidth = 1) +
+  scale_fill_manual(values = c(
+    "raw" = "red",
+    "mean" = "green"
+  )) +
+  scale_y_continuous(breaks = seq(0, 4, by = 2)) +
+  scale_x_discrete(labels = c(
+    "mean_A" = expression(mu[5.5]),
+    "mean_B" = expression(mu[27.5]),
+    "A" = "5.5 mM",
+    "B" = "27.5 mM"
+  )) +
+  labs(
+    x = NULL,
+    y = "Aktivitet",
+    title = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) + coord_cartesian(ylim = c(0, 4.0))
+
+##############################
 
 
-# Quartic equation solver in R
 
-# Function to solve quartic equations
-solve_quartic <- function(a, b, c, d, e) {
-  # Input validation
-  if (!is.numeric(c(a, b, c, d, e))) {
-    stop("All coefficients must be numeric.")
-  }
-  if (a == 0) {
-    stop("Coefficient 'a' cannot be zero for a quartic equation.")
-  }
+##############################
+
+# Exempel 1.2
+
+summary_df <- data.frame(
+  group = c("A", "B", "A", "B"),
+  type  = c("sample", "sample", "mean", "mean"),
+  mean  = c(0.875, 1.400, 0.875, 1.400),
+  sd    = c(0.250, 0.400, 0.125, 0.200)   # SD for samples, SE for means
+)
+
+summary_df$type <- factor(summary_df$type,
+                          levels = c("sample", "mean"))
+
+x <- seq(0, 4, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    type  = summary_df$type[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
   
-  # Coefficients in descending order of powers
-  coeffs <- c(a, b, c, d, e)
+  facet_wrap(~ type, nrow = 1,
+             labeller = labeller(
+               type = c(
+                 "sample"   = "Stickprov (SD)",
+                 "mean" = "Medelvärden (SE)"
+               )
+             )) +
   
-  # Solve using polyroot (returns complex roots if needed)
-  roots <- polyroot(coeffs)
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
   
-  return(roots)
-}
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) + 
+  scale_color_manual(
+    name = "Glukoskoncentration",
+    values = c("A" = "steelblue", "B" = "orange"),
+    labels = c("A" = "5.5 mM", "B" = "27.5 mM")
+  ) +
+  scale_fill_manual(
+    name = "Glukoskoncentration",
+    values = c("A" = "steelblue", "B" = "orange"),
+    labels = c("A" = "5.5 mM", "B" = "27.5 mM")
+  )
 
-# Example usage:
-# Equation: 2x^4 - 3x^3 + x^2 - 5x + 6 = 0
-a <- 2
-b <- -3
-c <- 1
-d <- -5
-e <- 6
+##############################
 
-roots <- solve_quartic(a, b, c, d, e)
 
-# Display results
-cat("Roots of the quartic equation:\n")
-print(roots)
+
+##############################
+
+# Exempel 1.3
+
+# Medelvärden (SE)
+
+x <- seq(0, 1500, length.out = 1000)
+
+df <- data.frame(
+  x = rep(x, 4),
+  density = c(
+    dnorm(x, mean = 35, sd = 6),
+    dnorm(x, mean = 910, sd = 87),
+    dnorm(x, mean = 942, sd = 106),
+    dnorm(x, mean = 956, sd = 95)
+  ),
+  distribution = factor(
+    rep(c("Glucose", "Glucose + acetate", "Glucose + octanoate", "Glucose + palmitate"), each = length(x))
+  )
+)
+
+ggplot(df, aes(x = x, y = density, color = distribution)) +
+  geom_line(linewidth = 1.2) +
+  scale_color_manual(
+    values = c(
+      "Glucose" = "darkgrey",
+      "Glucose + acetate" = "red",
+      "Glucose + octanoate" = "blue",
+      "Glucose + palmitate" = "green"
+    )
+  ) +
+  labs(
+    title = "Medelvärden (SE)",
+    x = "AMP-koncentration, nmol/g",
+    y = NULL,
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  )
+##############################
+
+
+
+##############################
+
+# Exempel 1.4
+
+# Stickprov (SD)
+
+x <- seq(0, 1500, length.out = 1000)
+
+df <- data.frame(
+  x = rep(x, 4),
+  density = c(
+    dnorm(x, mean = 35, sd = 2*6),
+    dnorm(x, mean = 910, sd = 2*87),
+    dnorm(x, mean = 942, sd = 2*106),
+    dnorm(x, mean = 956, sd = 2*95)
+  ),
+  distribution = factor(
+    rep(c("Glucose", "Glucose + acetate", "Glucose + octanoate", "Glucose + palmitate"), each = length(x))
+  )
+)
+
+ggplot(df, aes(x = x, y = density, color = distribution)) +
+  geom_line(linewidth = 1.2) +
+  scale_color_manual(
+    values = c(
+      "Glucose" = "darkgrey",
+      "Glucose + acetate" = "red",
+      "Glucose + octanoate" = "blue",
+      "Glucose + palmitate" = "green"
+    )
+  ) +
+  labs(
+    title = "Stickprov (SD)",
+    x = "AMP-koncentration, nmol/g",
+    y = NULL,
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  )
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.5
+
+summary_df <- data.frame(
+  group = c("A", "B", "C", "A", "B", "C"),
+  type  = c("sample", "sample", "sample", "mean", "mean", "mean"),
+  mean  = c(910, 942, 956, 910, 942, 956),
+  sd    = c(2*87, 2*106, 2*95, 87, 106, 95)   # SD for samples, SE for means
+)
+
+summary_df$type <- factor(summary_df$type,
+                          levels = c("sample", "mean"))
+
+x <- seq(400, 1600, length.out = 100)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    type  = summary_df$type[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  facet_wrap(~ type, nrow = 1,
+             labeller = labeller(
+               type = c(
+                 "sample"   = "Stickprov (SD)",
+                 "mean" = "Medelvärden (SE)"
+               )
+             )) +
+  
+  labs(
+    x = "AMP-koncentration, ng/mol",
+    y = NULL
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 12)
+  ) + 
+  scale_color_manual(
+    name = NULL,
+    values = c("A" = "red", "B" = "blue", "C" = "green"),
+    labels = c("A" = "Glucose + acetate",
+               "B" = "Glucose + octanoate",
+               "C" = "Glucose + palmitate")
+  )
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.6
+
+summary_df <- data.frame(
+  group = c("A", "B",  "A", "B", "A", "B"),
+  type  = c("Empty", "Empty",
+            "Mouse ChREBP", "Mouse ChREBP",
+            "Rat ChREBP", "Rat ChREBP"),
+  mean  = c(0.875, 1.400,
+            0.940, 3.440,
+            1.125, 3.630),
+  sd    = c(0.125, 0.200,
+            0.190, 0.420, 
+            0.250, 0.230)
+)
+
+summary_df$type <- factor(summary_df$type,
+                          levels = c("Empty",
+                                     "Mouse ChREBP",
+                                     "Rat ChREBP"))
+
+x <- seq(0, 6, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    type  = summary_df$type[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
+  
+  facet_wrap(~ type, nrow = 1,
+             labeller = labeller(
+               type = c(
+                 "Empty"   = "Empty vector",
+                 "Mouse ChREBP",
+                 "Rat ChREBP"
+               )
+             )) +
+  
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) + 
+  scale_color_manual(
+    name = "Glukoskoncentration",
+    values = c("A" = "steelblue", "B" = "orange"),
+    labels = c("A" = "5.5 mM", "B" = "27.5 mM")
+  ) +
+  scale_fill_manual(
+    name = "Glukoskoncentration",
+    values = c("A" = "steelblue", "B" = "orange"),
+    labels = c("A" = "5.5 mM", "B" = "27.5 mM")
+  ) + coord_cartesian(ylim = c(0, 3.2))
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.7
+
+summary_df <- data.frame(
+  group = c("A", "B",  "A", "B", "A", "B"),
+  type  = c("Empty", "Empty",
+            "Mouse ChREBP", "Mouse ChREBP",
+            "Rat ChREBP", "Rat ChREBP"),
+  mean  = c(0.875, 1.400,
+            0.940, 3.440,
+            1.125, 3.630),
+  sd    = 2*c(0.125, 0.200,
+            0.190, 0.420, 
+            0.250, 0.230)
+)
+
+summary_df$type <- factor(summary_df$type,
+                          levels = c("Empty",
+                                     "Mouse ChREBP",
+                                     "Rat ChREBP"))
+
+x <- seq(0, 6, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    type  = summary_df$type[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
+  
+  facet_wrap(~ type, nrow = 1,
+             labeller = labeller(
+               type = c(
+                 "Empty"   = "Empty vector",
+                 "Mouse ChREBP",
+                 "Rat ChREBP"
+               )
+             )) +
+  
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) + 
+  scale_color_manual(
+    name = "Glukoskoncentration",
+    values = c("A" = "steelblue", "B" = "orange"),
+    labels = c("A" = "5.5 mM", "B" = "27.5 mM")
+  ) +
+  scale_fill_manual(
+    name = "Glukoskoncentration",
+    values = c("A" = "steelblue", "B" = "orange"),
+    labels = c("A" = "5.5 mM", "B" = "27.5 mM")
+  ) + coord_cartesian(ylim = c(0, 3.2))
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.8
+
+summary_df <- data.frame(
+  condition = c("Glc", "Glc",
+                "Glc+acetate", "Glc+acetate"),
+  group = c("Empty vector", "Rat ChREBP",
+            "Empty vector", "Rat ChREBP"),
+  mean  = c(0.875, 3.300,
+            0.315, 0.940),
+  sd    = c(0.125, 0.450,
+            0.125, 0.190)
+)
+
+summary_df$condition <- factor(summary_df$condition,
+                               levels = c("Glc", "Glc+acetate"))
+
+x <- seq(0, 6, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    condition = summary_df$condition[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
+  
+  facet_wrap(~ condition, nrow = 1) +
+  
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) +
+  
+  scale_color_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  
+  coord_cartesian(ylim = c(0, 4))
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.9
+
+summary_df <- data.frame(
+  condition = c("Glc+octanoate", "Glc+octanoate",
+                "Glc+palmitate", "Glc+palmitate"),
+  group = c("Empty vector", "Rat ChREBP",
+            "Empty vector", "Rat ChREBP"),
+  mean  = c(0.315, 0.800,
+            0.300, 0.625),
+  sd    = c(0.110, 0.260,
+            0.100, 0.175)
+)
+
+summary_df$condition <- factor(summary_df$condition,
+                               levels = c("Glc+octanoate", "Glc+palmitate"))
+
+x <- seq(0, 6, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    condition = summary_df$condition[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
+  
+  facet_wrap(~ condition, nrow = 1) +
+  
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) +
+  
+  scale_color_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  
+  coord_cartesian(ylim = c(0, 4))
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.10
+
+n <- 5
+
+summary_df <- data.frame(
+  condition = c("Glc", "Glc",
+                "Glc+acetate", "Glc+acetate"),
+  group = c("Empty vector", "Rat ChREBP",
+            "Empty vector", "Rat ChREBP"),
+  mean  = c(0.875, 3.300,
+            0.315, 0.940),
+  sd    = c(0.125, 0.450,
+            0.125, 0.190) * sqrt(n)
+)
+
+summary_df$condition <- factor(summary_df$condition,
+                               levels = c("Glc", "Glc+acetate"))
+
+x <- seq(0, 6, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    condition = summary_df$condition[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
+  
+  facet_wrap(~ condition, nrow = 1) +
+  
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) +
+  
+  scale_color_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  
+  coord_cartesian(ylim = c(0, 4))
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.11
+
+n <- 5
+
+summary_df <- data.frame(
+  condition = c("Glc+octanoate", "Glc+octanoate",
+                "Glc+palmitate", "Glc+palmitate"),
+  group = c("Empty vector", "Rat ChREBP",
+            "Empty vector", "Rat ChREBP"),
+  mean  = c(0.315, 0.800,
+            0.300, 0.625),
+  sd    = c(0.110, 0.260,
+            0.100, 0.175) * sqrt(n)
+)
+
+summary_df$condition <- factor(summary_df$condition,
+                               levels = c("Glc+octanoate", "Glc+palmitate"))
+
+x <- seq(0, 6, length.out = 500)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    condition = summary_df$condition[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_area(alpha = 0.2, position = "identity") +
+  
+  facet_wrap(~ condition, nrow = 1) +
+  
+  labs(
+    x = "Aktivitet",
+    y = "Täthet"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(size = 12)
+  ) +
+  
+  scale_color_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("Empty vector" = "steelblue",
+               "Rat ChREBP" = "orange")
+  ) +
+
+  coord_cartesian(ylim = c(0, 4))
+
+##############################
+
+
+
+##############################
+
+# Exempel 1.12
+
+n <- 5
+
+summary_df <- data.frame(
+  group = c("A", "B", "C", "D", "A", "B", "C", "D"),
+  type  = c("sample", "sample", "sample", "sample", "mean", "mean", "mean", "mean"),
+  mean  = c(62.5, 120.5, 145.0, 156.3, 62.5, 120.5, 145.0, 156.3),
+  sd    = c(sqrt(n)*12.5, sqrt(n)*13.0, sqrt(n)*29.0, sqrt(n)*8.7, 12.5, 13.0, 29.0, 8.7)   # SD for samples, SE for means
+)
+
+summary_df$type <- factor(summary_df$type,
+                          levels = c("sample", "mean"))
+
+x <- seq(0, 400, length.out = 100)
+
+df_dist <- do.call(rbind, lapply(1:nrow(summary_df), function(i) {
+  data.frame(
+    x = x,
+    density = dnorm(x,
+                    mean = summary_df$mean[i],
+                    sd   = summary_df$sd[i]),
+    group = summary_df$group[i],
+    type  = summary_df$type[i]
+  )
+}))
+
+
+ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
+  geom_line(linewidth = 1.2) +
+  facet_wrap(~ type, nrow = 1,
+             labeller = labeller(
+               type = c(
+                 "sample"   = "Stickprov (SD)",
+                 "mean" = "Medelvärden (SE)"
+               )
+             )) +
+  
+  labs(
+    x = "AMPK-aktivitet, pmol/min/mg protein",
+    y = NULL
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 12)
+  ) + 
+  scale_color_manual(
+    name = NULL,
+    values = c("A" = "darkgrey", "B" = "red", "C" = "blue", "D" = "green"),
+    labels = c("A" = "Glc",
+               "B" = "Glc+acetate",
+               "C" = "Glc+octanoate",
+               "D" = "Glc+palmitate")
+  )
+
+##############################
+
+
+
+##############################
+
+# Pålitlighet 1
+
+x <- seq(-5, 5, length.out = 1000)
+
+df <- data.frame(
+  x = x,
+  density = dnorm(x, mean = 0, sd = 1)
+)
+
+# Positions for vertical lines
+vline_positions <- c(-2, -1, 0, 1, 2)
+
+# Data frame for vertical segments
+vline_df <- data.frame(
+  x = vline_positions,
+  y_start = -0.01,
+  y_end = dnorm(vline_positions, mean = 0, sd = 1)
+)
+
+ggplot(df, aes(x = x, y = density)) +
+  geom_line(linewidth = 1.2, color = "black") +
+  geom_segment(
+    data = vline_df,
+    aes(x = x, xend = x, y = y_start, yend = y_end),
+    linetype = c(2, 2, 1, 2, 2),    # dashed for -1 and 1, solid for 0
+    linewidth = 1,
+    color = "black"
+  ) +
+  geom_ribbon(
+    data = subset(df, x <= -2),
+    aes(x = x, ymin = 0, ymax = density),
+    inherit.aes = FALSE,
+    fill = "red",
+    alpha = 0.5
+  ) +
+  geom_ribbon(
+    data = subset(df, x >= 2),
+    aes(x = x, ymin = 0, ymax = density),
+    inherit.aes = FALSE,
+    fill = "red",
+    alpha = 0.5
+  ) +
+  scale_x_continuous(
+    breaks = c(-2, -1, 0, 1, 2),
+    labels = expression(-2*s, -s, bar(x), +s, +2*s)
+  ) +
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  ) +
+  annotate("text", x = 2.9, y = 0.06, label = expression(p < 0.025), color = "red", size = 5) +
+  annotate("text", x = -2.8, y = 0.06, label = expression(p < 0.025), color = "red", size = 5)
+
+##############################
+
+
+
+##############################
+
+# Pålitlighet 2
+
+x <- seq(-4, 6, length.out = 1000)
+
+mu_A <- 0
+mu_B <- 2
+sigma <- 1
+
+df <- data.frame(
+  x = rep(x, 2),
+  density = c(
+    dnorm(x, mean = mu_A, sd = sigma),
+    dnorm(x, mean = mu_B, sd = sigma)
+  ),
+  distribution = factor(rep(c("Mean A", "Mean B"), each = length(x)))
+)
+
+ggplot(df, aes(x = x, y = density, fill = distribution)) +
+  geom_ribbon(
+    data = subset(df, x <= -2 & distribution == "Mean A"),
+    aes(x = x, ymin = 0, ymax = density),
+    alpha = 0.5,
+    inherit.aes = FALSE,
+    fill = "orange"
+  ) +
+  geom_ribbon(
+    data = subset(df, x >= 2 & distribution == "Mean A"),
+    aes(x = x, ymin = 0, ymax = density),
+    alpha = 0.5,
+    inherit.aes = FALSE,
+    fill = "orange"
+  ) +
+  geom_line(linewidth = 1.2) +
+  scale_x_continuous(
+    breaks = c(0, 2),
+    labels = c(
+      expression(mu[A]),
+      expression(mu[B])
+    )
+  ) +
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL,
+    color = "Distribution"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  ) +
+  geom_segment(aes(x = 0, xend = 0, y = 0, yend = max(df$density)), color = "red", linetype = 1, linewidth = 1) +
+  geom_segment(aes(x = 2, xend = 2, y = 0, yend = max(df$density)), color = "blue", linetype = 1, linewidth = 1) +
+  annotate("text", x = 2.9, y = 0.06, label = expression(p < 0.025), color = "orange", size = 5) +
+  annotate("text", x = -2.8, y = 0.06, label = expression(p < 0.025), color = "orange", size = 5) +
+  annotate("segment",
+           x = mu_A, xend = mu_A + sigma,
+           y = 0.22, yend = 0.22,
+           arrow = arrow(length = unit(0.15, "cm"))) +
+  
+  annotate("segment",
+           x = mu_A, xend = mu_A - sigma,
+           y = 0.22, yend = 0.22,
+           arrow = arrow(length = unit(0.15, "cm"))) +
+  
+  # Arrow: ±2 SD
+  annotate("segment",
+           x = mu_A, xend = mu_A + 2*sigma,
+           y = 0.04, yend = 0.04,
+           arrow = arrow(length = unit(0.15, "cm"))) +
+  
+  annotate("segment",
+           x = mu_A, xend = mu_A - 2*sigma,
+           y = 0.04, yend = 0.04,
+           arrow = arrow(length = unit(0.15, "cm"))) +
+  # Double arrow for delta:
+  annotate("segment",
+           x = mu_A + 1*sigma, xend = mu_A + 2*sigma,
+           y = 0.35, yend = 0.35,
+           arrow = arrow(length = unit(0.15, "cm"))) +
+  
+  annotate("segment",
+           x = mu_A + 1*sigma, xend = mu_A,
+           y = 0.35, yend = 0.35,
+           arrow = arrow(length = unit(0.15, "cm"))) +
+  # Labels
+  annotate("text", x = mu_A + 0.5*sigma, y = 0.24, label = expression(1*sigma)) +
+  annotate("text", x = mu_A - 0.5*sigma, y = 0.24, label = expression(1*sigma)) +
+  annotate("text", x = mu_A + sigma, y = 0.06, label = expression(2*sigma)) +
+  annotate("text", x = mu_A - sigma, y = 0.06, label = expression(2*sigma)) +
+  annotate("text", x = mu_A + sigma, y = 0.37, label = expression(delta))
+
+##############################
+
+
+
+##############################
+
+# Överlappning 1
+
+x <- seq(-4, 6, length.out = 1000)
+
+mu_A <- 0
+mu_B <- 2.5
+sigma <- 1
+
+df <- data.frame(
+  x = rep(x, 2),
+  density = c(
+    dnorm(x, mean = mu_A, sd = sigma),
+    dnorm(x, mean = mu_B, sd = sigma)
+  ),
+  distribution = factor(rep(c("Mean A", "Mean B"), each = length(x)))
+)
+
+# Densities
+dA <- dnorm(x, mean = mu_A, sd = sigma)
+dB <- dnorm(x, mean = mu_B, sd = sigma)
+
+# Pointwise minimum
+overlap <- pmin(dA, dB)
+
+# Numerical integration
+dx <- diff(x)[1]
+OVL <- sum(overlap) * dx
+
+overlap_df <- data.frame(
+  x = x,
+  overlap = overlap
+)
+
+
+ggplot(df, aes(x = x, y = density, fill = distribution)) +
+  geom_ribbon(
+    data = overlap_df,
+    aes(x = x, ymin = 0, ymax = overlap),
+    inherit.aes = FALSE,
+    fill = "orange",
+    alpha = 0.5
+  ) +
+  geom_line(linewidth = 1.2) +
+  scale_x_continuous(
+    breaks = c(0, 2),
+    labels = c("","")
+  ) +
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL,
+    color = "Distribution"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  )
+##############################
+
+
+
+##############################
+
+# Överlappning 2
+
+x <- seq(-4, 8, length.out = 1000)
+
+mu_A <- 0
+mu_B <- 2.5
+sigma <- 1
+
+df <- data.frame(
+  x = rep(x, 2),
+  density = c(
+    dnorm(x, mean = mu_A, sd = sigma),
+    dnorm(x, mean = mu_B, sd = sigma)
+  ),
+  distribution = factor(rep(c("Mean 0", "Mean 2"), each = length(x)))
+)
+
+dA <- dnorm(x, mean = mu_A, sd = sigma)
+dB <- dnorm(x, mean = mu_B, sd = sigma)
+
+AB_density <- pmin(dA, dB)
+
+
+# Central 95% limits
+lower_A <- qnorm(0.025, mean = mu_A, sd = sigma)
+upper_A <- qnorm(0.975, mean = mu_A, sd = sigma)
+
+lower_B <- qnorm(0.025, mean = mu_B, sd = sigma)
+upper_B <- qnorm(0.975, mean = mu_B, sd = sigma)
+
+left  <- max(lower_A, lower_B)
+right <- min(upper_A, upper_B)
+
+ggplot(df, aes(x = x, y = density, fill = distribution)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon_pattern(
+    data = subset(
+      data.frame(x = x, density = AB_density),
+      x >= left & x <= right
+    ),
+    aes(x = x, ymin = 0, ymax = density),
+    inherit.aes = FALSE,
+    fill = NA,                  # transparent background
+    pattern = "stripe",
+    pattern_fill = "black",
+    pattern_colour = "black",
+    pattern_angle = 45,
+    pattern_density = 0.2,
+    pattern_spacing = 0.03,
+    alpha = 1
+  ) +
+  scale_x_continuous(
+    breaks = c(0, 2),
+    labels = c("", "")
+  ) +
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+    
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14)
+  ) +
+  geom_segment(
+    aes(
+      x = lower_A,
+      xend = lower_A,
+      y = 0,
+      yend = dnorm(lower_A, mean = mu_A, sd = sigma)
+    ),
+    color = "blue",
+    linetype = 1,
+    linewidth = 1.5
+  ) +
+  geom_segment(
+    aes(
+      x = upper_A,
+      xend = upper_A,
+      y = 0,
+      yend = dnorm(lower_A, mean = mu_A, sd = sigma)
+    ),
+    color = "blue",
+    linetype = 1,
+    linewidth = 1.5
+  ) +
+  geom_segment(
+    aes(
+      x = lower_B,
+      xend = lower_B,
+      y = 0,
+      yend = dnorm(lower_B, mean = mu_B, sd = sigma)
+    ),
+    color = "red",
+    linetype = 1,
+    linewidth = 1.5
+  ) +
+  geom_segment(
+    aes(
+      x = upper_B,
+      xend = upper_B,
+      y = 0,
+      yend = dnorm(upper_B, mean = mu_B, sd = sigma)
+    ),
+    color = "red",
+    linetype = 1,
+    linewidth = 1.5
+  ) +
+  geom_segment(
+    aes(
+      x = mu_A,
+      xend = mu_A,
+      y = 0,
+      yend = dnorm(mu_A, mean = mu_A, sd = sigma)
+    ),
+    color = "blue",
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  geom_segment(
+    aes(
+      x = mu_B,
+      xend = mu_B,
+      y = 0,
+      yend = dnorm(mu_B, mean = mu_B, sd = sigma)
+    ),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1.2
+  )
+##############################
