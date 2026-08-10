@@ -2844,6 +2844,1129 @@ ggplot() +
 
 ##############################
 
+# Regression 2
+
+# Example data
+set.seed(123)
+
+# Parameters
+beta0 <- 3
+beta1 <- 0.8
+sigma <- 4
+
+# x values
+x <- seq(2, 30, length.out = 25)
+
+# Generate y values
+y <- beta0 + beta1 * x + rnorm(
+  length(x),
+  mean = 0,
+  sd = sigma
+)
+
+df <- data.frame(
+  x = x,
+  y = y
+)
+
+model <- lm(y ~ x, data = df)
+
+summary(model)
+coef(model)
+
+x_new <- seq(
+  min(df$x),
+  max(df$x),
+  length.out = 500
+)
+
+newdata <- data.frame(x = x_new)
+
+pred <- predict(
+  model,
+  newdata = newdata,
+  interval = "confidence",
+  level = 0.95
+)
+
+pred_pi <- predict(
+  model,
+  newdata = newdata,
+  interval = "prediction",
+  level = 0.95
+)
+
+df_pred <- data.frame(
+  x = x_new,
+  fit = pred[, "fit"],
+  conf_low = pred[, "lwr"],
+  conf_high = pred[, "upr"],
+  pred_low = pred_pi[, "lwr"],
+  pred_high = pred_pi[, "upr"]
+)
+
+ggplot() +
+  
+  # 95% prediction interval
+  geom_line(
+    data = df_pred,
+    aes(
+      x = x,
+      y = pred_low,
+      colour = "95%-Prediktionsintervall"
+    ),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  geom_line(
+    data = df_pred,
+    aes(
+      x = x,
+      y = pred_high,
+      colour = "95%-Prediktionsintervall"
+    ),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  # 95% confidence interval for mean response
+  geom_line(
+    data = df_pred,
+    aes(
+      x = x,
+      y = conf_low,
+      colour = "95%-KI för medelrespons"
+    ),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  geom_line(
+    data = df_pred,
+    aes(
+      x = x,
+      y = conf_high,
+      colour = "95%-KI för medelrespons"
+    ),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  # Raw observations
+  geom_point(
+    data = df,
+    aes(
+      x = x,
+      y = y,
+      colour = "Observationer"
+    ),
+    size = 2.5
+  ) +
+  
+  # Regression line
+  geom_line(
+    data = df_pred,
+    aes(
+      x = x,
+      y = fit,
+      colour = "Regressionslinje"
+    ),
+    linewidth = 1.2
+  ) +
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "Observationer" = "black",
+      "Regressionslinje" = "blue",
+      "95%-KI för medelrespons" = "red",
+      "95%-Prediktionsintervall" = "orange"
+    )
+  ) +
+  
+  labs(
+    x = "x",
+    y = "y"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+
+##############################
+
+
+
+##############################
+
+# Regression 3
+
+set.seed(123)
+
+beta0 <- 2
+beta1 <- 0.8
+sigma <- 2
+
+x <- 1:8
+
+epsilon <- rnorm(
+  length(x),
+  mean = 0,
+  sd = sigma
+)
+
+y <- beta0 + beta1*x + epsilon
+
+df <- data.frame(
+  x = x,
+  epsilon = epsilon,
+  y = y
+)
+
+df
+
+kable(
+  df |>
+    dplyr::select(x, y, epsilon),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  col.names = c(
+    "$x_i$",
+    "$y_i$",
+    "$\\epsilon_i$"
+  ),
+  escape = FALSE,
+  table.envir = "table",
+  position = "H",
+  caption = "Exempeldata för linjär regression."
+)
+
+model <- lm(y ~ x, data = df)
+
+coef(model)
+
+beta0_hat <- coef(model)[1]
+beta1_hat <- coef(model)[2]
+
+beta0_hat
+beta1_hat
+
+
+kable(
+  data.frame(
+    parameter = c("$\\hat{\\beta}_0$", "$\\hat{\\beta}_1$"),
+    estimate = c(beta0_hat, beta1_hat)
+  ),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  escape = FALSE,
+  col.names = c(
+    "Parameter",
+    "Estimat"
+  ),
+  table.envir = "table",
+  position = "H",
+  caption = "Skattade regressionsparametrar."
+)
+
+df$y_hat <- beta0_hat + beta1_hat * df$x
+
+y_bar <- mean(df$y)
+
+kable(
+  df |>
+    dplyr::select(x, y, y_hat) |>
+    dplyr::mutate(y_bar = y_bar) |>
+    dplyr::select(x, y, y_bar, y_hat),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  escape = FALSE,
+  col.names = c(
+    "$x_i$",
+    "$y_i$",
+    "$\\bar{y}$",
+    "$\\hat{y}_i$"
+  ),
+  table.envir = "table",
+  position = "H",
+  caption = "Observerade, medelvärdesbaserade och predikterade responsvärden."
+)
+
+SS_tot <- sum((df$y - y_bar)^2)
+
+SS_res <- sum((df$y - df$y_hat)^2)
+
+R2 <- 1 - SS_res / SS_tot
+
+kable(
+  data.frame(
+    quantity = c(
+      "$SS_{\\mathrm{tot}}$",
+      "$SS_{\\mathrm{res}}$",
+      "$R^2$"
+    ),
+    value = c(
+      SS_tot,
+      SS_res,
+      R2
+    )
+  ),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  escape = FALSE,
+  col.names = c(
+    "Storhet",
+    "Värde"
+  ),
+  table.envir = "table",
+  position = "H",
+  caption = "Variationsuppdelning och förklaringsgrad."
+)
+
+n <- nrow(df)
+
+df_res <- n - 2
+
+s2 <- SS_res / df_res
+s <- sqrt(s2)
+
+x_bar <- mean(df$x)
+
+Sxx <- sum((df$x - x_bar)^2)
+
+SE_beta1 <- s / sqrt(Sxx)
+
+SE_beta0 <- s * sqrt(
+  1/n + x_bar^2/Sxx
+)
+
+t_crit <- qt(0.975, df = df_res)
+
+beta0_CI <- c(
+  beta0_hat - t_crit * SE_beta0,
+  beta0_hat + t_crit * SE_beta0
+)
+
+beta1_CI <- c(
+  beta1_hat - t_crit * SE_beta1,
+  beta1_hat + t_crit * SE_beta1
+)
+
+kable(
+  data.frame(
+    parameter = c(
+      "$\\hat{\\beta}_0$",
+      "$\\hat{\\beta}_1$"
+    ),
+    estimate = c(
+      beta0_hat,
+      beta1_hat
+    ),
+    SE = c(
+      SE_beta0,
+      SE_beta1
+    ),
+    lower = c(
+      beta0_CI[1],
+      beta1_CI[1]
+    ),
+    upper = c(
+      beta0_CI[2],
+      beta1_CI[2]
+    )
+  ),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  escape = FALSE,
+  col.names = c(
+    "Parameter",
+    "Skattning",
+    "SE",
+    "Nedre gräns",
+    "Övre gräns"
+  ),
+  table.envir = "table",
+  position = "H",
+  caption = "95~\\% konfidensintervall för regressionsparametrarna."
+)
+
+x0 <- 5
+
+y_hat_0 <- beta0_hat + beta1_hat * x0
+
+SE_mean <- s * sqrt(
+  1/n + (x0 - x_bar)^2/Sxx
+)
+
+CI_mean <- c(
+  y_hat_0 - t_crit * SE_mean,
+  y_hat_0 + t_crit * SE_mean
+)
+
+kable(
+  data.frame(
+    quantity = c(
+      "$x_0$",
+      "$\\hat{y}_0$",
+      "$SE(\\hat{y}_0)$",
+      "$t_{0.975,df_{\\mathrm{res}}}$",
+      "Nedre gräns",
+      "Övre gräns"
+    ),
+    value = c(
+      x0,
+      y_hat_0,
+      SE_mean,
+      t_crit,
+      CI_mean[1],
+      CI_mean[2]
+    )
+  ),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  escape = FALSE,
+  col.names = c(
+    "Storhet",
+    "Värde"
+  ),
+  table.envir = "table",
+  position = "H",
+  caption = "95~\\% konfidensintervall för medelresponsen vid $x_0=5$."
+)
+
+SE_pred <- s * sqrt(
+  1 +
+    1/n +
+    (x0 - x_bar)^2/Sxx
+)
+
+PI <- c(
+  y_hat_0 - t_crit * SE_pred,
+  y_hat_0 + t_crit * SE_pred
+)
+
+kable(
+  data.frame(
+    quantity = c(
+      "$x_0$",
+      "$\\hat{y}_0$",
+      "$SE_{\\mathrm{pred}}$",
+      "$t_{0.975,df_{\\mathrm{res}}}$",
+      "Nedre gräns",
+      "Övre gräns"
+    ),
+    value = c(
+      x0,
+      y_hat_0,
+      SE_pred,
+      t_crit,
+      PI[1],
+      PI[2]
+    )
+  ),
+  format = "latex",
+  booktabs = TRUE,
+  digits = 3,
+  escape = FALSE,
+  col.names = c(
+    "Storhet",
+    "Värde"
+  ),
+  table.envir = "table",
+  position = "H",
+  caption = "95~\\% prediktionsintervall vid $x_0=5$."
+)
+
+# Grid of x-values for plotting
+x_grid <- seq(
+  min(df$x) - 0.5,
+  max(df$x) + 0.5,
+  length.out = 300
+)
+
+# Fitted mean response
+y_fit <- beta0_hat + beta1_hat * x_grid
+
+# SE for mean response
+SE_mean_grid <- s * sqrt(
+  1/n +
+    (x_grid - x_bar)^2 / Sxx
+)
+
+# SE for prediction
+SE_pred_grid <- s * sqrt(
+  1 +
+    1/n +
+    (x_grid - x_bar)^2 / Sxx
+)
+
+# Confidence and prediction intervals
+df_plot <- data.frame(
+  x = x_grid,
+  fit = y_fit,
+  conf_low = y_fit - t_crit * SE_mean_grid,
+  conf_high = y_fit + t_crit * SE_mean_grid,
+  pred_low = y_fit - t_crit * SE_pred_grid,
+  pred_high = y_fit + t_crit * SE_pred_grid
+)
+
+# Plot
+ggplot() +
+  
+  # 95% prediction interval
+  geom_line(
+    data = df_plot,
+    aes(x = x, y = pred_low, colour = "95%-Prediktionsintervall"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  geom_line(
+    data = df_plot,
+    aes(x = x, y = pred_high, colour = "95%-Prediktionsintervall"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  # 95% confidence interval for mean response
+  geom_line(
+    data = df_plot,
+    aes(x = x, y = conf_low, colour = "95%-KI för medelrespons"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  geom_line(
+    data = df_plot,
+    aes(x = x, y = conf_high, colour = "95%-KI för medelrespons"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  # Observations
+  geom_point(
+    data = df,
+    aes(x = x, y = y, colour = "Observationer"),
+    size = 2.8
+  ) +
+  
+  # Regression line
+  geom_line(
+    data = df_plot,
+    aes(x = x, y = fit, colour = "Regressionslinje"),
+    linewidth = 1.2
+  ) +
+  
+  # regression euqation and R2
+  annotate(
+    "text",
+    x = max(df$x) - 1,
+    y = -1,
+    label = sprintf(
+      "atop(hat(y) == %.3f + %.3f*x, R^2 == %.3f)",
+      beta0_hat,
+      beta1_hat,
+      R2
+    ),
+    parse = TRUE,
+    hjust = 0,
+    size = 5
+  ) +
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "Observationer" = "black",
+      "Regressionslinje" = "blue",
+      "95%-KI för medelrespons" = "red",
+      "95%-Prediktionsintervall" = "orange"
+    )
+  ) +
+  
+  labs(
+    x = "x",
+    y = "y"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+
+##############################
+
+
+
+##############################
+
+# Regression 4
+
+set.seed(123)
+
+# Example data
+x <- 0:10
+y <- 2 + 3*x + rnorm(10, 0, 15)
+
+df <- data.frame(x = x, y = y)
+
+# Linear regression
+model <- lm(y ~ x, data = df)
+
+# Observed x-range
+x_min <- min(df$x)
+x_max <- max(df$x)
+
+# Extended x-range for extrapolation
+x_grid <- seq(
+  x_min - 30,
+  x_max + 30,
+  length.out = 400
+)
+
+# Regression quantities
+n <- nrow(df)
+x_bar <- mean(df$x)
+Sxx <- sum((df$x - x_bar)^2)
+
+s <- summary(model)$sigma
+df_res <- df.residual(model)
+
+t_crit <- qt(0.975, df_res)
+
+beta0_hat <- coef(model)[1]
+beta1_hat <- coef(model)[2]
+
+# Fitted values
+fit <- beta0_hat + beta1_hat*x_grid
+
+# SE for mean response
+SE_mean <- s * sqrt(
+  1/n +
+    (x_grid - x_bar)^2/Sxx
+)
+
+# SE for prediction
+SE_pred <- s * sqrt(
+  1 +
+    1/n +
+    (x_grid - x_bar)^2/Sxx
+)
+
+# Intervals
+df_plot <- data.frame(
+  x = x_grid,
+  fit = fit,
+  conf_low = fit - t_crit*SE_mean,
+  conf_high = fit + t_crit*SE_mean,
+  pred_low = fit - t_crit*SE_pred,
+  pred_high = fit + t_crit*SE_pred
+)
+
+# Plot
+ggplot() +
+  
+  # Prediction interval
+  geom_line(
+    data = df_plot,
+    aes(x, pred_low, colour = "95%-Prediktionsintervall"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  geom_line(
+    data = df_plot,
+    aes(x, pred_high, colour = "95%-Prediktionsintervall"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  # CI for mean response
+  geom_line(
+    data = df_plot,
+    aes(x, conf_low, colour = "95%-KI för medelrespons"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  geom_line(
+    data = df_plot,
+    aes(x, conf_high, colour = "95%-KI för medelrespons"),
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  
+  # Regression line
+  geom_line(
+    data = df_plot,
+    aes(x, fit, colour = "Regressionslinje"),
+    linewidth = 1.2
+  ) +
+  
+  # Observed data
+  geom_point(
+    data = df,
+    aes(x, y, colour = "Observationer"),
+    size = 2.5
+  ) +
+  
+  # Boundaries of observed data
+  geom_vline(
+    xintercept = c(x_min, x_max),
+    linetype = "dotted",
+    colour = "grey40"
+  ) +
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "Observationer" = "black",
+      "Regressionslinje" = "blue",
+      "95%-KI för medelrespons" = "red",
+      "95%-Prediktionsintervall" = "orange"
+    )
+  ) +
+  
+  labs(
+    x = "x",
+    y = "y"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
+##############################
+
+
+
+##############################
+
+# Regression 5
+
+set.seed(123)
+
+# Example binary data
+n <- 20
+
+x <- seq(-3, 3, length.out = n)
+
+# Generate binary outcome from a logistic model
+p <- plogis(-0.1 + 2*x)
+
+y <- rbinom(
+  n = n,
+  size = 1,
+  prob = p
+)
+
+df <- data.frame(
+  x = x,
+  y = y
+)
+
+# Logistic regression
+model <- glm(
+  y ~ x,
+  data = df,
+  family = binomial(link = "logit")
+)
+
+summary(model)
+
+# Prediction grid
+x_grid <- seq(
+  min(df$x),
+  max(df$x),
+  length.out = 300
+)
+
+df_pred <- data.frame(
+  x = x_grid
+)
+
+df_pred$p <- predict(
+  model,
+  newdata = df_pred,
+  type = "response"
+)
+
+# Extract coefficients
+beta0 <- coef(model)[1]
+beta1 <- coef(model)[2]
+
+# Regression equation
+eq_label <- sprintf(
+  "hat(p)(x)[Y==1] == frac(1, 1 + e^{-(%.3f %+.3f*x)})",
+  beta0,
+  beta1
+)
+
+ggplot(df, aes(x = x, y = y)) +
+  
+  # Binary observations
+  geom_jitter(
+    width = 0,
+    height = 0,
+    size = 2.5,
+    colour = "black"
+  ) +
+  
+  # Fitted logistic curve
+  geom_line(
+    data = df_pred,
+    aes(x = x, y = p),
+    colour = "blue",
+    linewidth = 1.2,
+    alpha = 0.5
+  ) +
+  
+  annotate(
+    "text",
+    x = min(df$x) + 0.2,
+    y = 0.9,
+    label = eq_label,
+    parse = TRUE,
+    hjust = 0,
+    size = 5
+  ) +
+  
+  labs(
+    x = "x",
+    y = expression(p[Y==1])
+  ) +
+  
+  scale_x_continuous(
+    limits = c(-3.05, 3.05),
+    breaks = c(-3.0, -2.0, -1.0, 0, 1.0, 2.0, 3.0)
+  ) +
+  
+  scale_y_continuous(
+    limits = c(-0.05, 1.05),
+    breaks = c(0, 0.25, 0.5, 0.75, 1)
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(colour = "black")
+  )
+
+##############################
+
+
+
+##############################
+
+# Robusthet 1
+
+set.seed(123)
+
+# Base observations
+n <- 8
+
+base <- rnorm(
+  n,
+  mean = 70,
+  sd = 5
+)
+
+# Dataset without extreme observations
+df_normal <- data.frame(
+  value = base,
+  scenario = "Inga extrema observationer"
+)
+
+# Dataset with extreme observations
+df_extreme <- data.frame(
+  value = c(
+    base,
+    100,
+    105
+  ),
+  scenario = "Med extrema observationer"
+)
+
+# Combine datasets
+df <- bind_rows(
+  df_normal,
+  df_extreme
+)
+
+# Calculate mean and median
+df_summary <- df |>
+  group_by(scenario) |>
+  summarise(
+    mean = mean(value),
+    median = median(value),
+    .groups = "drop"
+  )
+
+df_summary
+
+ggplot(
+  df,
+  aes(x = 0, y = value)
+) +
+  
+  geom_jitter(
+    width = 0.02,
+    height = 0,
+    size = 3,
+    shape = 21,
+    fill = "white",
+    colour = "black",
+    stroke = 1
+  ) +
+  
+  # Mean
+  geom_segment(
+    data = df_summary,
+    aes(
+      x = -0.04,
+      xend = 0.04,
+      y = mean,
+      yend = mean,
+      colour = "Medelvärde"
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Median
+  geom_segment(
+    data = df_summary,
+    aes(
+      x = -0.04,
+      xend = 0.04,
+      y = median,
+      yend = median,
+      colour = "Median"
+    ),
+    linewidth = 1.2
+  ) +
+  
+  scale_x_continuous(
+    limits = c(-0.1, 0.1),
+    breaks = NULL
+  ) +
+  
+  facet_wrap(
+    ~scenario,
+    ncol = 2
+  ) +
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "Medelvärde" = "red",
+      "Median" = "blue"
+    )
+  ) +
+  
+  labs(
+    x = NULL,
+    y = "Observation"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.line = element_line(colour = "black"),
+    strip.text = element_text(face = "bold")
+  )
+
+
+##############################
+
+
+
+##############################
+
+# Robusthet 2
+
+set.seed(123)
+
+# Base observations
+n <- 10
+
+x_base <- 1:n
+
+y_base <- 0.5 * x_base +
+  rnorm(n, mean = 0, sd = 0.8)
+
+
+# ----------------------------
+# Dataset without extremes
+# ----------------------------
+
+df_normal <- data.frame(
+  x = x_base,
+  y = y_base,
+  extreme = FALSE,
+  scenario = "Utan extrema observationer"
+)
+
+
+# ----------------------------
+# Dataset with extremes
+# ----------------------------
+
+df_extreme <- data.frame(
+  x = c(x_base, 0, 12),
+  y = c(y_base, 6.5, -1),
+  extreme = c(
+    rep(FALSE, n),
+    TRUE,
+    TRUE
+  ),
+  scenario = "Med extrema observationer"
+)
+
+
+# ----------------------------
+# Combine
+# ----------------------------
+
+df <- bind_rows(
+  df_normal,
+  df_extreme
+)
+
+# Regression and correlation statistics
+df_summary <- df |>
+  group_by(scenario) |>
+  summarise(
+    slope = coef(lm(y ~ x))[2],
+    intercept = coef(lm(y ~ x))[1],
+    r = cor(x, y),
+    R2 = summary(lm(y ~ x))$r.squared,
+    .groups = "drop"
+  )
+
+df_summary
+
+
+df_pred <- df |>
+  group_by(scenario) |>
+  group_modify(~ {
+    
+    model <- lm(y ~ x, data = .x)
+    
+    x_grid <- seq(
+      min(.x$x) - 0.5,
+      max(.x$x) + 0.5,
+      length.out = 100
+    )
+    
+    data.frame(
+      x = x_grid,
+      y = predict(
+        model,
+        newdata = data.frame(x = x_grid)
+      )
+    )
+    
+  })
+
+df_summary$label <- sprintf(
+  "r = %.2f\nR² = %.2f\nlutning = %.2f",
+  df_summary$r,
+  df_summary$R2,
+  df_summary$slope
+)
+
+ggplot(
+  df,
+  aes(x = x, y = y)
+) +
+  
+  geom_point(
+    aes(colour = extreme),
+    size = 3,
+    shape = 21,
+    fill = "white",
+    stroke = 1
+  ) +
+  
+  geom_line(
+    data = df_pred,
+    aes(x = x, y = y),
+    colour = "blue",
+    linewidth = 1.2
+  ) +
+  
+  geom_text(
+    data = df_summary,
+    aes(
+      x = 1,
+      y = max(df$y),
+      label = label
+    ),
+    hjust = 0,
+    vjust = 1,
+    inherit.aes = FALSE,
+    size = 4.5
+  ) +
+  
+  facet_wrap(
+    ~scenario,
+    ncol = 2
+  ) +
+  
+  scale_colour_manual(
+    values = c(
+      "FALSE" = "black",
+      "TRUE" = "red"
+    ),
+    labels = c(
+      "FALSE" = "Observation",
+      "TRUE" = "Extrem observation"
+    ),
+    name = NULL
+  ) +
+  
+  labs(
+    x = "x",
+    y = "y"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(colour = "black"),
+    strip.text = element_text(face = "bold"),
+    legend.position = "bottom"
+  )
+
+
+##############################
+
+
+
+##############################
+
 # Reaktionshastighet 1
 
 
@@ -4581,6 +5704,2378 @@ ggplot(df_dist, aes(x = x, y = density, color = group, fill = group)) +
                "B" = "Glc+acetate",
                "C" = "Glc+octanoate",
                "D" = "Glc+palmitate")
+  )
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.1
+
+
+# Table I - Demographics
+data <- data.frame(
+  variable = c(
+    "Age",
+    "Stature",
+    "Body mass",
+    "BMI"
+  ),
+  
+  n_HIT = 16,
+  mean_HIT = c(
+    23.00,
+    175.50,
+    68.58,
+    22.22
+  ),
+  sd_HIT = c(
+    3.00,
+    8.16,
+    9.04,
+    1.97
+  ),
+  
+  n_3ST = 14,
+  mean_3ST = c(
+    22.00,
+    169.21,
+    73.30,
+    25.49
+  ),
+  sd_3ST = c(
+    2.00,
+    7.91,
+    11.65,
+    2.51
+  )
+)
+
+
+# Pooled SD
+
+data$SD_pooled <- sqrt(
+  (
+    (data$n_HIT - 1) * data$sd_HIT^2 +
+      (data$n_3ST - 1) * data$sd_3ST^2
+  ) /
+    (
+      data$n_HIT + data$n_3ST - 2
+    )
+)
+
+
+# Cohen's d: abs( HIT - 3ST )
+# to only indicate magnitude not direction
+
+data$d <- abs(
+  (data$mean_HIT - data$mean_3ST)
+) / data$SD_pooled
+
+
+# Probability of superiority
+# Reported in the direction of the higher mean
+
+data <- data |>
+  mutate(
+    
+    P_superiority = ifelse(
+      mean_HIT >= mean_3ST,
+      
+      pnorm(
+        (mean_HIT - mean_3ST) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      ),
+      
+      pnorm(
+        (mean_3ST - mean_HIT) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_HIT >= mean_3ST,
+      "P(HIT > 3ST)",
+      "P(3ST > HIT)"
+    )
+  )
+
+
+# Overlap coefficient
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(x, mean = mu1, sd = sd1),
+        dnorm(x, mean = mu2, sd = sd2)
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+data$OVL <- mapply(
+  calculate_ovl,
+  data$mean_HIT,
+  data$sd_HIT,
+  data$mean_3ST,
+  data$sd_3ST
+)
+
+
+# Annotation text
+
+annotations <- data |>
+  rowwise() |>
+  mutate(
+    x_min = min(
+      mean_HIT - 4 * sd_HIT,
+      mean_3ST - 4 * sd_3ST
+    ),
+    
+    x_max = max(
+      mean_HIT + 4 * sd_HIT,
+      mean_3ST + 4 * sd_3ST
+    ),
+    
+    x_position = x_min + 1.1 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          min(
+            mean_HIT - 4 * sd_HIT,
+            mean_3ST - 4 * sd_3ST
+          ),
+          max(
+            mean_HIT + 4 * sd_HIT,
+            mean_3ST + 4 * sd_3ST
+          ),
+          length.out = 1000
+        ),
+        mean = mean_HIT,
+        sd = sd_HIT
+      ),
+      dnorm(
+        seq(
+          min(
+            mean_HIT - 4 * sd_HIT,
+            mean_3ST - 4 * sd_3ST
+          ),
+          max(
+            mean_HIT + 4 * sd_HIT,
+            mean_3ST + 4 * sd_3ST
+          ),
+          length.out = 1000
+        ),
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    ),
+    
+    y_position = max_density * 1.2,
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_superiority,
+      d,
+      OVL
+    )
+  ) |>
+  ungroup()
+
+
+# Density data
+
+plot_data <- lapply(
+  seq_len(nrow(data)),
+  function(i) {
+    
+    row <- data[i, ]
+    
+    x_min <- min(
+      row$mean_HIT - 4 * row$sd_HIT,
+      row$mean_3ST - 4 * row$sd_3ST
+    )
+    
+    x_max <- max(
+      row$mean_HIT + 4 * row$sd_HIT,
+      row$mean_3ST + 4 * row$sd_3ST
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    hit <- dnorm(
+      x,
+      mean = row$mean_HIT,
+      sd = row$sd_HIT
+    )
+    
+    st3 <- dnorm(
+      x,
+      mean = row$mean_3ST,
+      sd = row$sd_3ST
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      HIT = hit,
+      ST3 = st3,
+      overlap = pmin(hit, st3)
+    )
+  }
+) |>
+  bind_rows()
+
+
+# Convert curves to long format
+
+plot_curves <- plot_data |>
+  pivot_longer(
+    cols = c(HIT, ST3),
+    names_to = "group",
+    values_to = "density"
+  ) |>
+  mutate(
+    group = recode(
+      group,
+      "ST3" = "3ST"
+    )
+  )
+
+
+# Mean lines
+
+mean_lines <- bind_rows(
+  
+  data |>
+    transmute(
+      variable,
+      group = "HIT",
+      x = mean_HIT,
+      yend = dnorm(
+        mean_HIT,
+        mean = mean_HIT,
+        sd = sd_HIT
+      )
+    ),
+  
+  data |>
+    transmute(
+      variable,
+      group = "3ST",
+      x = mean_3ST,
+      yend = dnorm(
+        mean_3ST,
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    )
+)
+
+
+variable_labels <- c(
+  "Age" = "Ålder",
+  "Stature" = "Kroppslängd",
+  "Body mass" = "Kroppsmassa",
+  "BMI" = "BMI"
+)
+
+
+
+
+#### Plotting ###
+
+ggplot() +
+  
+  # OVL
+  geom_ribbon(
+    data = plot_data,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Density curves
+  geom_line(
+    data = plot_curves,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  geom_segment(
+    data = mean_lines,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "HIT" = "blue",
+      "3ST" = "red"
+    )
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  geom_text(
+    data = annotations,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 1.05,
+    vjust = 1.2,
+    size = 4
+  ) +
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 2,
+    labeller = as_labeller(variable_labels)
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(colour = "black"),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.position = "top",
+    strip.text = element_text(face = "bold")
+  )
+
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.2
+
+# Gender distribution: HIT vs 3ST
+
+gender_data <- data.frame(
+  
+  group = c(
+    "HIT",
+    "HIT",
+    "3ST",
+    "3ST"
+  ),
+  
+  gender = c(
+    "Män",
+    "Kvinnor",
+    "Män",
+    "Kvinnor"
+  ),
+  
+  count = c(
+    9,
+    7,
+    4,
+    10
+  )
+)
+
+# Set facet order
+gender_data$group <- factor(
+  gender_data$group,
+  levels = c("HIT", "3ST")
+)
+
+
+ggplot(
+  gender_data,
+  aes(
+    x = gender,
+    y = count,
+    fill = gender
+  )
+) +
+  
+  geom_col(
+    width = 0.6,
+    colour = "black",
+    linewidth = 0.8
+  ) +
+  
+  geom_text(
+    aes(label = count),
+    vjust = -0.4,
+    size = 5
+  ) +
+  
+  scale_fill_manual(
+    values = c(
+      "Män" = "blue",
+      "Kvinnor" = "red"
+    )
+  ) +
+  
+  facet_wrap(
+    ~group,
+    ncol = 2,
+    labeller = as_labeller(
+      c(
+        "HIT" = "HIT (n = 16)",
+        "3ST" = "3ST (n = 14)"
+      )
+    )
+  ) +
+  
+  scale_y_continuous(
+    limits = c(0, 12),
+    breaks = seq(0, 12, 2),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  
+  labs(
+    x = NULL,
+    y = "Antal deltagare"
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.ticks.x = element_blank(),
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    legend.position = "none"
+  )
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.3
+
+rm(list = ls())
+
+# HIT: Pre vs Post
+
+# Data from Table 2
+
+data_HIT <- data.frame(
+  
+  variable = c(
+    "Chest Press",
+    "Heel Raise",
+    "Rear Deltoid",
+    "Elbow Flexion",
+    "Seated Row",
+    "Knee Extension",
+    "Knee Flexion",
+    "Abdominal Flexion",
+    "Push-up"
+  ),
+  
+  mean_pre = c(
+    32.06,
+    32.81,
+    30.50,
+    27.38,
+    36.00,
+    35.69,
+    37.50,
+    19.75,
+    21.81
+  ),
+  
+  sd_pre = c(
+    15.04,
+    12.53,
+    11.51,   # Corrected
+    6.82,
+    13.82,
+    13.08,
+    20.48,
+    10.44,
+    13.15
+  ),
+  
+  mean_post = c(
+    57.69,
+    60.63,
+    64.25,
+    48.69,
+    76.31,
+    53.25,
+    65.19,
+    35.44,
+    41.00
+  ),
+  
+  sd_post = c(
+    18.81,
+    22.44,
+    32.94,
+    11.69,
+    32.25,
+    19.70,
+    35.80,
+    12.54,
+    41.04
+  ),
+  
+  mean_change = c(
+    25.63,
+    27.81,
+    33.75,
+    21.31,
+    40.31,
+    17.56,
+    27.69,
+    15.69,
+    19.19
+  ),
+  
+  sd_change = c(
+    16.09,
+    16.04,
+    27.16,
+    12.41,
+    27.37,
+    18.13,
+    19.09,
+    11.15,
+    40.21
+  )
+)
+
+
+# Within-group effect size
+
+data_HIT <- data_HIT |>
+  mutate(
+    
+    # Within-group standardized change
+    d = mean_change / sd_change,
+    
+    # Probability that a randomly selected
+    # Post observation exceeds a randomly
+    # selected Pre observation
+    P_post_gt_pre = pnorm(
+      (mean_post - mean_pre) /
+        sqrt(sd_pre^2 + sd_post^2)
+    ),
+    
+    superiority_label = "P(Post > Pre)"
+  )
+
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(x, mean = mu1, sd = sd1),
+        dnorm(x, mean = mu2, sd = sd2)
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+
+data_HIT$OVL <- mapply(
+  calculate_ovl,
+  data_HIT$mean_pre,
+  data_HIT$sd_pre,
+  data_HIT$mean_post,
+  data_HIT$sd_post
+)
+
+
+# Annotation
+
+data_HIT <- data_HIT |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_post_gt_pre,
+      d,
+      OVL
+    )
+  )
+
+
+# Generate normal curves
+
+plot_data_HIT <- lapply(
+  seq_len(nrow(data_HIT)),
+  function(i) {
+    
+    row <- data_HIT[i, ]
+    
+    x_min <- min(
+      row$mean_pre - 3.5 * row$sd_pre,
+      row$mean_post - 3.5 * row$sd_post
+    )
+    
+    x_max <- max(
+      row$mean_pre + 5 * row$sd_pre,
+      row$mean_post + 5 * row$sd_post
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    pre <- dnorm(
+      x,
+      mean = row$mean_pre,
+      sd = row$sd_pre
+    )
+    
+    post <- dnorm(
+      x,
+      mean = row$mean_post,
+      sd = row$sd_post
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      Pre = pre,
+      Post = post,
+      overlap = pmin(pre, post)
+    )
+  }
+) |>
+  bind_rows()
+
+
+# Long format for curves
+
+plot_curves_HIT <- plot_data_HIT |>
+  pivot_longer(
+    cols = c(Pre, Post),
+    names_to = "group",
+    values_to = "density"
+  ) |>
+  mutate(
+    group = recode(
+      group,
+      "Pre" = "HIT-Pre",
+      "Post" = "HIT-Post"
+    )
+  )
+
+
+# Mean lines
+
+mean_lines_HIT <- bind_rows(
+  
+  data_HIT |>
+    transmute(
+      variable,
+      group = "HIT-Pre",
+      x = mean_pre,
+      yend = dnorm(
+        mean_pre,
+        mean = mean_pre,
+        sd = sd_pre
+      )
+    ),
+  
+  data_HIT |>
+    transmute(
+      variable,
+      group = "HIT-Post",
+      x = mean_post,
+      yend = dnorm(
+        mean_post,
+        mean = mean_post,
+        sd = sd_post
+      )
+    )
+)
+
+
+# Annotation positions
+
+annotations_HIT <- data_HIT |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_pre - 4 * sd_pre,
+      mean_post - 4 * sd_post
+    ),
+    
+    x_max = max(
+      mean_pre + 4 * sd_pre,
+      mean_post + 4 * sd_post
+    ),
+    
+    x_position = x_min +
+      0.90 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_pre,
+        sd = sd_pre
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_post,
+        sd = sd_post
+      )
+    ),
+    
+    y_position = max_density * 0.4
+    
+  ) |>
+  ungroup()
+
+
+# exercise labels translation
+exercise_labels <- c(
+  "Chest Press" = "Bröstpress",
+  "Heel Raise" = "Tåhävning",
+  "Rear Deltoid" = "Bakre axel",
+  "Elbow Flexion" = "Armbågsflexion",
+  "Seated Row" = "Sittande rodd",
+  "Knee Extension" = "Knäextension",
+  "Knee Flexion" = "Knäflexion",
+  "Abdominal Flexion" = "Bålflexion",
+  "Push-up" = "Armhävning"
+)
+
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  geom_ribbon(
+    data = plot_data_HIT,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  geom_line(
+    data = plot_curves_HIT,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  geom_segment(
+    data = mean_lines_HIT,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  geom_text(
+    data = annotations_HIT,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label,
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 3.0
+  ) +
+  
+  # Colours
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "HIT-Pre" = "blue",
+      "HIT-Post" = "red"
+    )
+  ) +
+  
+  # 3 x 3 panel
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    #labeller = as_labeller(exercise_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.4
+
+rm(list = ls())
+
+# 3ST: Pre vs Post
+
+# Data from Table 2
+
+data_3ST <- data.frame(
+  
+  variable = c(
+    "Chest Press",
+    "Heel Raise",
+    "Rear Deltoid",
+    "Elbow Flexion",
+    "Seated Row",
+    "Knee Extension",
+    "Knee Flexion",
+    "Abdominal Flexion",
+    "Push-up"
+  ),
+  
+  mean_pre = c(
+    31.07,
+    24.79,
+    40.93,   # Corrected
+    23.86,
+    31.07,
+    36.00,
+    44.50,
+    21.43,
+    21.14
+  ),
+  
+  sd_pre = c(
+    13.85,
+    5.55,
+    25.36,   # Corrected
+    8.38,
+    13.85,
+    17.55,
+    18.68,
+    9.89,
+    13.98
+  ),
+  
+  mean_post = c(
+    46.93,
+    37.86,
+    57.79,
+    35.50,
+    66.21,
+    53.79,
+    58.43,
+    36.64,
+    27.54
+  ),
+  
+  sd_post = c(
+    19.26,
+    14.13,
+    25.19,
+    9.88,
+    20.05,
+    25.19,
+    17.25,
+    11.32,
+    11.38
+  ),
+  
+  mean_change = c(
+    15.86,
+    13.07,
+    16.86,   # Corrected
+    11.64,
+    23.64,
+    17.79,
+    13.93,
+    15.21,
+    4.43     # Corrected
+  ),
+  
+  sd_change = c(
+    12.02,
+    12.04,
+    17.38,   # Corrected
+    7.90,
+    17.93,
+    20.25,
+    11.95,
+    8.58,
+    11.40
+  )
+)
+
+
+# Within-group effect size
+
+data_3ST <- data_3ST |>
+  mutate(
+    
+    # Within-group standardized change
+    
+    d = mean_change / sd_change,
+    
+    # Probability that a randomly selected
+    # Post observation exceeds a randomly
+    # selected Pre observation
+    
+    P_post_gt_pre = pnorm(
+      (mean_post - mean_pre) /
+        sqrt(sd_pre^2 + sd_post^2)
+    ),
+    
+    superiority_label = "P(Post > Pre)"
+  )
+
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(x, mean = mu1, sd = sd1),
+        dnorm(x, mean = mu2, sd = sd2)
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+
+data_3ST$OVL <- mapply(
+  calculate_ovl,
+  data_3ST$mean_pre,
+  data_3ST$sd_pre,
+  data_3ST$mean_post,
+  data_3ST$sd_post
+)
+
+
+# Annotation
+
+data_3ST <- data_3ST |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_post_gt_pre,
+      d,
+      OVL
+    )
+  )
+
+
+# Generate normal curves
+
+plot_data_3ST <- lapply(
+  seq_len(nrow(data_3ST)),
+  function(i) {
+    
+    row <- data_3ST[i, ]
+    
+    x_min <- min(
+      row$mean_pre - 3.5 * row$sd_pre,
+      row$mean_post - 3.5 * row$sd_post
+    )
+    
+    x_max <- max(
+      row$mean_pre + 5 * row$sd_pre,
+      row$mean_post + 5 * row$sd_post
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    pre <- dnorm(
+      x,
+      mean = row$mean_pre,
+      sd = row$sd_pre
+    )
+    
+    post <- dnorm(
+      x,
+      mean = row$mean_post,
+      sd = row$sd_post
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      Pre = pre,
+      Post = post,
+      overlap = pmin(pre, post)
+    )
+  }
+) |>
+  bind_rows()
+
+
+# Long format for curves
+
+plot_curves_3ST <- plot_data_3ST |>
+  pivot_longer(
+    cols = c(Pre, Post),
+    names_to = "group",
+    values_to = "density"
+  ) |>
+  mutate(
+    group = recode(
+      group,
+      "Pre" = "3ST-Pre",
+      "Post" = "3ST-Post"
+    )
+  )
+
+
+# Mean lines
+
+mean_lines_3ST <- bind_rows(
+  
+  data_3ST |>
+    transmute(
+      variable,
+      group = "3ST-Pre",
+      x = mean_pre,
+      yend = dnorm(
+        mean_pre,
+        mean = mean_pre,
+        sd = sd_pre
+      )
+    ),
+  
+  data_3ST |>
+    transmute(
+      variable,
+      group = "3ST-Post",
+      x = mean_post,
+      yend = dnorm(
+        mean_post,
+        mean = mean_post,
+        sd = sd_post
+      )
+    )
+)
+
+
+# Annotation positions
+
+annotations_3ST <- data_3ST |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_pre - 4 * sd_pre,
+      mean_post - 4 * sd_post
+    ),
+    
+    x_max = max(
+      mean_pre + 4 * sd_pre,
+      mean_post + 4 * sd_post
+    ),
+    
+    x_position = x_min +
+      0.90 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_pre,
+        sd = sd_pre
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_post,
+        sd = sd_post
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+
+# Exercise labels translation
+
+exercise_labels <- c(
+  "Chest Press" = "Bröstpress",
+  "Heel Raise" = "Tåhävning",
+  "Rear Deltoid" = "Bakre axel",
+  "Elbow Flexion" = "Armbågsflexion",
+  "Seated Row" = "Sittande rodd",
+  "Knee Extension" = "Knäextension",
+  "Knee Flexion" = "Knäflexion",
+  "Abdominal Flexion" = "Bålflexion",
+  "Push-up" = "Armhävning"
+)
+
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data_3ST,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves_3ST,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines_3ST,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations_3ST,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label,
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 3.0
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "3ST-Pre" = "blue",
+      "3ST-Post" = "red"
+    )
+  ) +
+  
+  # 3 x 3 panel
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    #labeller = as_labeller(exercise_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.5
+
+# HIT vs 3ST: Pre
+
+# Clear previous variables
+rm(list = ls())
+
+# Data from Table 2
+
+data_HIT <- data.frame(
+  
+  variable = c(
+    "Chest Press",
+    "Heel Raise",
+    "Rear Deltoid",
+    "Elbow Flexion",
+    "Seated Row",
+    "Knee Extension",
+    "Knee Flexion",
+    "Abdominal Flexion",
+    "Push-up"
+  ),
+  
+  mean = c(
+    32.06,
+    32.81,
+    30.50,
+    27.38,
+    36.00,
+    35.69,
+    37.50,
+    19.75,
+    21.81
+  ),
+  
+  sd = c(
+    15.04,
+    12.53,
+    11.51,
+    6.82,
+    13.82,
+    13.08,
+    20.48,
+    10.44,
+    13.15
+  ),
+  
+  n = 16
+)
+
+
+data_3ST <- data.frame(
+  
+  variable = c(
+    "Chest Press",
+    "Heel Raise",
+    "Rear Deltoid",
+    "Elbow Flexion",
+    "Seated Row",
+    "Knee Extension",
+    "Knee Flexion",
+    "Abdominal Flexion",
+    "Push-up"
+  ),
+  
+  mean = c(
+    31.07,
+    24.79,
+    40.93,
+    23.86,
+    31.07,
+    36.00,
+    44.50,
+    21.43,
+    21.14
+  ),
+  
+  sd = c(
+    13.85,
+    5.55,
+    25.36,
+    8.38,
+    13.85,
+    17.55,
+    18.68,
+    9.89,
+    13.98
+  ),
+  
+  n = 14
+)
+
+
+# Combine HIT and 3ST
+
+data <- data.frame(
+  
+  variable = data_HIT$variable,
+  
+  mean_HIT = data_HIT$mean,
+  sd_HIT = data_HIT$sd,
+  n_HIT = data_HIT$n,
+  
+  mean_3ST = data_3ST$mean,
+  sd_3ST = data_3ST$sd,
+  n_3ST = data_3ST$n
+)
+
+
+# Pooled SD
+
+data$SD_pooled <- sqrt(
+  (
+    (data$n_HIT - 1) * data$sd_HIT^2 +
+      (data$n_3ST - 1) * data$sd_3ST^2
+  ) /
+    (
+      data$n_HIT +
+        data$n_3ST -
+        2
+    )
+)
+
+
+# Cohen's d
+# Absolute value = magnitude only
+
+data$d <- abs(
+  data$mean_HIT - data$mean_3ST
+) / data$SD_pooled
+
+
+# Probability of superiority
+# Direction follows the group with the higher mean
+
+data <- data |>
+  mutate(
+    
+    P_superiority = ifelse(
+      
+      mean_HIT >= mean_3ST,
+      
+      pnorm(
+        (mean_HIT - mean_3ST) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      ),
+      
+      pnorm(
+        (mean_3ST - mean_HIT) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_HIT >= mean_3ST,
+      "P(HIT > 3ST)",
+      "P(3ST > HIT)"
+    )
+  )
+
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(
+          x,
+          mean = mu1,
+          sd = sd1
+        ),
+        dnorm(
+          x,
+          mean = mu2,
+          sd = sd2
+        )
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+
+data$OVL <- mapply(
+  calculate_ovl,
+  data$mean_HIT,
+  data$sd_HIT,
+  data$mean_3ST,
+  data$sd_3ST
+)
+
+
+# Annotation
+
+data <- data |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_superiority,
+      d,
+      OVL
+    )
+  )
+
+
+# Generate normal curves
+
+plot_data <- lapply(
+  seq_len(nrow(data)),
+  function(i) {
+    
+    row <- data[i, ]
+    
+    x_min <- min(
+      row$mean_HIT - 3.5 * row$sd_HIT,
+      row$mean_3ST - 3.5 * row$sd_3ST
+    )
+    
+    x_max <- max(
+      row$mean_HIT + 5 * row$sd_HIT,
+      row$mean_3ST + 5 * row$sd_3ST
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    hit <- dnorm(
+      x,
+      mean = row$mean_HIT,
+      sd = row$sd_HIT
+    )
+    
+    st3 <- dnorm(
+      x,
+      mean = row$mean_3ST,
+      sd = row$sd_3ST
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      HIT = hit,
+      ST3 = st3,
+      overlap = pmin(hit, st3)
+    )
+  }
+) |>
+  bind_rows()
+
+
+# Long format for curves
+
+plot_curves <- plot_data |>
+  pivot_longer(
+    cols = c(HIT, ST3),
+    names_to = "group",
+    values_to = "density"
+  )
+
+
+# Mean lines
+
+mean_lines <- bind_rows(
+  
+  data |>
+    transmute(
+      variable,
+      group = "HIT",
+      x = mean_HIT,
+      yend = dnorm(
+        mean_HIT,
+        mean = mean_HIT,
+        sd = sd_HIT
+      )
+    ),
+  
+  data |>
+    transmute(
+      variable,
+      group = "ST3",
+      x = mean_3ST,
+      yend = dnorm(
+        mean_3ST,
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    )
+)
+
+
+# Annotation positions
+
+annotations <- data |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_HIT - 4 * sd_HIT,
+      mean_3ST - 4 * sd_3ST
+    ),
+    
+    x_max = max(
+      mean_HIT + 4 * sd_HIT,
+      mean_3ST + 4 * sd_3ST
+    ),
+    
+    x_position = x_min +
+      0.90 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_HIT,
+        sd = sd_HIT
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+
+# Exercise labels
+
+exercise_labels <- c(
+  "Chest Press" = "Bröstpress",
+  "Heel Raise" = "Tåhävning",
+  "Rear Deltoid" = "Bakre axel",
+  "Elbow Flexion" = "Armbågsflexion",
+  "Seated Row" = "Sittande rodd",
+  "Knee Extension" = "Knäextension",
+  "Knee Flexion" = "Knäflexion",
+  "Abdominal Flexion" = "Bålflexion",
+  "Push-up" = "Armhävning"
+)
+
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 3.0
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "HIT" = "blue",
+      "ST3" = "red"
+    ),
+    labels = c(
+      "HIT" = "Pre-HIT",
+      "ST3" = "Pre-3ST"
+    )
+  ) +
+  
+  # 3 x 3 panel
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    #labeller = as_labeller(exercise_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.6
+
+# HIT vs 3ST: Post
+
+# Clear previous variables
+
+rm(list = ls())
+
+# Data from Table 2
+
+data_HIT <- data.frame(
+  
+  variable = c(
+    "Chest Press",
+    "Heel Raise",
+    "Rear Deltoid",
+    "Elbow Flexion",
+    "Seated Row",
+    "Knee Extension",
+    "Knee Flexion",
+    "Abdominal Flexion",
+    "Push-up"
+  ),
+  
+  mean = c(
+    57.69,
+    60.63,
+    64.25,
+    48.69,
+    76.31,
+    53.25,
+    65.19,
+    35.44,
+    41.00
+  ),
+  
+  sd = c(
+    18.81,
+    22.44,
+    32.94,
+    11.69,
+    32.25,
+    19.70,
+    35.80,
+    12.54,
+    41.04
+  ),
+  
+  n = 16
+)
+
+
+data_3ST <- data.frame(
+  
+  variable = c(
+    "Chest Press",
+    "Heel Raise",
+    "Rear Deltoid",
+    "Elbow Flexion",
+    "Seated Row",
+    "Knee Extension",
+    "Knee Flexion",
+    "Abdominal Flexion",
+    "Push-up"
+  ),
+  
+  mean = c(
+    46.93,
+    37.86,
+    57.79,
+    35.50,
+    66.21,
+    53.79,
+    58.43,
+    36.64,
+    27.54
+  ),
+  
+  sd = c(
+    19.26,
+    14.13,
+    25.19,
+    9.88,
+    20.05,
+    25.19,
+    17.25,
+    11.32,
+    11.38
+  ),
+  
+  n = 14
+)
+
+
+# Combine HIT and 3ST
+
+data <- data.frame(
+  
+  variable = data_HIT$variable,
+  
+  mean_HIT = data_HIT$mean,
+  sd_HIT = data_HIT$sd,
+  n_HIT = data_HIT$n,
+  
+  mean_3ST = data_3ST$mean,
+  sd_3ST = data_3ST$sd,
+  n_3ST = data_3ST$n
+)
+
+
+# Pooled SD
+
+data$SD_pooled <- sqrt(
+  (
+    (data$n_HIT - 1) * data$sd_HIT^2 +
+      (data$n_3ST - 1) * data$sd_3ST^2
+  ) /
+    (
+      data$n_HIT +
+        data$n_3ST -
+        2
+    )
+)
+
+
+# Cohen's d
+
+# Absolute value = magnitude only
+
+data$d <- abs(
+  data$mean_HIT - data$mean_3ST
+) / data$SD_pooled
+
+
+# Probability of superiority
+
+# Direction follows the group with the higher mean
+
+data <- data |>
+  mutate(
+    
+    P_superiority = ifelse(
+      
+      mean_HIT >= mean_3ST,
+      
+      pnorm(
+        (mean_HIT - mean_3ST) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      ),
+      
+      pnorm(
+        (mean_3ST - mean_HIT) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_HIT >= mean_3ST,
+      "P(HIT > 3ST)",
+      "P(3ST > HIT)"
+    )
+  )
+
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(
+          x,
+          mean = mu1,
+          sd = sd1
+        ),
+        dnorm(
+          x,
+          mean = mu2,
+          sd = sd2
+        )
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+
+data$OVL <- mapply(
+  calculate_ovl,
+  data$mean_HIT,
+  data$sd_HIT,
+  data$mean_3ST,
+  data$sd_3ST
+)
+
+
+# Annotation
+
+data <- data |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_superiority,
+      d,
+      OVL
+    )
+  )
+
+
+# Generate normal curves
+
+plot_data <- lapply(
+  seq_len(nrow(data)),
+  function(i) {
+    
+    row <- data[i, ]
+    
+    x_min <- min(
+      row$mean_HIT - 3.5 * row$sd_HIT,
+      row$mean_3ST - 3.5 * row$sd_3ST
+    )
+    
+    x_max <- max(
+      row$mean_HIT + 5 * row$sd_HIT,
+      row$mean_3ST + 5 * row$sd_3ST
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    hit <- dnorm(
+      x,
+      mean = row$mean_HIT,
+      sd = row$sd_HIT
+    )
+    
+    st3 <- dnorm(
+      x,
+      mean = row$mean_3ST,
+      sd = row$sd_3ST
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      HIT = hit,
+      ST3 = st3,
+      overlap = pmin(hit, st3)
+    )
+  }
+) |>
+  bind_rows()
+
+
+# Long format for curves
+
+plot_curves <- plot_data |>
+  pivot_longer(
+    cols = c(HIT, ST3),
+    names_to = "group",
+    values_to = "density"
+  )
+
+
+# Mean lines
+
+mean_lines <- bind_rows(
+  
+  data |>
+    transmute(
+      variable,
+      group = "HIT",
+      x = mean_HIT,
+      yend = dnorm(
+        mean_HIT,
+        mean = mean_HIT,
+        sd = sd_HIT
+      )
+    ),
+  
+  data |>
+    transmute(
+      variable,
+      group = "ST3",
+      x = mean_3ST,
+      yend = dnorm(
+        mean_3ST,
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    )
+)
+
+
+# Annotation positions
+
+annotations <- data |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_HIT - 4 * sd_HIT,
+      mean_3ST - 4 * sd_3ST
+    ),
+    
+    x_max = max(
+      mean_HIT + 4 * sd_HIT,
+      mean_3ST + 4 * sd_3ST
+    ),
+    
+    x_position = x_min +
+      0.90 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_HIT,
+        sd = sd_HIT
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+
+# Exercise labels
+
+exercise_labels <- c(
+  "Chest Press" = "Bröstpress",
+  "Heel Raise" = "Tåhävning",
+  "Rear Deltoid" = "Bakre axel",
+  "Elbow Flexion" = "Armbågsflexion",
+  "Seated Row" = "Sittande rodd",
+  "Knee Extension" = "Knäextension",
+  "Knee Flexion" = "Knäflexion",
+  "Abdominal Flexion" = "Bålflexion",
+  "Push-up" = "Armhävning"
+)
+
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 3.0
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "HIT" = "blue",
+      "ST3" = "red"
+    ),
+    labels = c(
+      "HIT" = "Post-HIT",
+      "ST3" = "Post-3ST"
+    )
+  ) +
+  
+  # 3 x 3 panel
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    # labeller = as_labeller(exercise_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
   )
 
 ##############################
