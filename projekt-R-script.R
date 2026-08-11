@@ -8078,4 +8078,1788 @@ ggplot() +
     )
   )
 
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.7
+
+# HIT: Pre vs Post - Body composition
+
+# Clear previous variables
+
+rm(list = ls())
+
+# Data from Table 3
+
+data_HIT <- data.frame(
+  
+  variable = c(
+    "Body Mass",
+    "Fat Free Mass",
+    "Muscle Mass",
+    "Fat Mass",
+    "Fat Percentage",
+    "Total Body Water"
+  ),
+  
+  mean_pre = c(
+    68.58,
+    55.47,
+    52.69,
+    13.12,
+    19.31,
+    40.02
+  ),
+  
+  sd_pre = c(
+    9.04,
+    9.28,
+    8.85,
+    4.13,
+    6.07,
+    6.59
+  ),
+  
+  mean_post = c(
+    69.04,
+    55.88,
+    53.09,
+    13.16,
+    19.11,
+    40.27
+  ),
+  
+  sd_post = c(
+    9.35,
+    8.80,
+    8.40,
+    4.53,
+    5.98,
+    6.21
+  ),
+  
+  mean_change = c(
+    0.46,
+    0.42,
+    0.40,
+    0.05,
+    -0.20,
+    0.27
+  ),
+  
+  sd_change = c(
+    2.27,
+    1.59,
+    1.50,
+    1.74,
+    2.03,
+    1.26
+  )
+)
+
+# Within-group effect size
+
+data_HIT <- data_HIT |>
+  mutate(
+    
+    # Within-group standardized change
+    # Absolute value = magnitude only
+    d = abs(mean_change) / sd_change,
+    
+    # Probability of superiority
+    # Direction follows whichever mean is higher
+    P_superiority = ifelse(
+      mean_post >= mean_pre,
+      
+      pnorm(
+        (mean_post - mean_pre) /
+          sqrt(sd_pre^2 + sd_post^2)
+      ),
+      
+      pnorm(
+        (mean_pre - mean_post) /
+          sqrt(sd_pre^2 + sd_post^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_post >= mean_pre,
+      "P(Post > Pre)",
+      "P(Pre > Post)"
+    )
+  )
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(
+          x,
+          mean = mu1,
+          sd = sd1
+        ),
+        dnorm(
+          x,
+          mean = mu2,
+          sd = sd2
+        )
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+data_HIT$OVL <- mapply(
+  calculate_ovl,
+  data_HIT$mean_pre,
+  data_HIT$sd_pre,
+  data_HIT$mean_post,
+  data_HIT$sd_post
+)
+
+# Annotation
+
+data_HIT <- data_HIT |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_post_gt_pre,
+      d,
+      OVL
+    )
+  )
+
+# Generate normal curves
+
+plot_data_HIT <- lapply(
+  seq_len(nrow(data_HIT)),
+  function(i) {
+    
+    row <- data_HIT[i, ]
+    
+    x_min <- min(
+      row$mean_pre - 3.5 * row$sd_pre,
+      row$mean_post - 3.5 * row$sd_post
+    )
+    
+    x_max <- max(
+      row$mean_pre + 5 * row$sd_pre,
+      row$mean_post + 5 * row$sd_post
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    pre <- dnorm(
+      x,
+      mean = row$mean_pre,
+      sd = row$sd_pre
+    )
+    
+    post <- dnorm(
+      x,
+      mean = row$mean_post,
+      sd = row$sd_post
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      Pre = pre,
+      Post = post,
+      overlap = pmin(pre, post)
+    )
+  }
+) |>
+  bind_rows()
+
+# Long format for curves
+
+plot_curves_HIT <- plot_data_HIT |>
+  pivot_longer(
+    cols = c(Pre, Post),
+    names_to = "group",
+    values_to = "density"
+  )
+
+# Mean lines
+
+mean_lines_HIT <- bind_rows(
+  
+  data_HIT |>
+    transmute(
+      variable,
+      group = "Pre",
+      x = mean_pre,
+      yend = dnorm(
+        mean_pre,
+        mean = mean_pre,
+        sd = sd_pre
+      )
+    ),
+  
+  data_HIT |>
+    transmute(
+      variable,
+      group = "Post",
+      x = mean_post,
+      yend = dnorm(
+        mean_post,
+        mean = mean_post,
+        sd = sd_post
+      )
+    )
+)
+
+# Annotation positions
+
+annotations_HIT <- data_HIT |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_pre - 4 * sd_pre,
+      mean_post - 4 * sd_post
+    ),
+    
+    x_max = max(
+      mean_pre + 4 * sd_pre,
+      mean_post + 4 * sd_post
+    ),
+    
+    x_position = x_min +
+      0.90 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_pre,
+        sd = sd_pre
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_post,
+        sd = sd_post
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+# Swedish labels
+
+bodycomp_labels <- c(
+  "Body Mass" = "Kroppsmassa (kg)",
+  "Fat Free Mass" = "Fettfri massa (kg)",
+  "Muscle Mass" = "Muskelmassa (kg)",
+  "Fat Mass" = "Fettmassa (kg)",
+  "Fat Percentage" = "Fettprocent (%)",
+  "Total Body Water" = "Totalt kroppsvatten (kg)"
+)
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data_HIT,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves_HIT,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines_HIT,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations_HIT,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 3.0
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "Pre" = "blue",
+      "Post" = "red"
+    ),
+    labels = c(
+      "Pre" = "HIT-Pre",
+      "Post" = "HIT-Post"
+    )
+  ) +
+  
+  # Swedish facet labels
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    labeller = as_labeller(bodycomp_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.8
+
+# 3ST: Pre vs Post - Body composition
+
+# Clear previous variables
+
+rm(list = ls())
+
+# Data from Table 3
+
+data_3ST <- data.frame(
+  
+  variable = c(
+    "Body Mass",
+    "Fat Free Mass",
+    "Muscle Mass",
+    "Fat Mass",
+    "Fat Percentage",
+    "Total Body Water"
+  ),
+  
+  mean_pre = c(
+    73.30,
+    51.05,
+    48.49,
+    22.25,
+    30.34,
+    36.85
+  ),
+  
+  sd_pre = c(
+    11.65,
+    9.03,
+    8.60,
+    5.07,
+    5.23,
+    6.53
+  ),
+  
+  mean_post = c(
+    74.04,
+    50.50,
+    47.95,
+    23.54,
+    31.92,
+    36.40
+  ),
+  
+  sd_post = c(
+    11.07,
+    9.16,
+    8.73,
+    4.77,
+    5.21,
+    6.55
+  ),
+  
+  mean_change = c(
+    0.75,
+    -0.55,
+    -0.54,
+    1.29,
+    1.58,
+    -0.45  # Paper reports -0.86; inconsistent with reported pre/post means
+  ),
+  
+  sd_change = c(
+    2.35,
+    1.66,
+    1.61,
+    3.02,
+    3.55,
+    1.81
+  )
+)
+
+# Within-group effect size
+
+data_3ST <- data_3ST |>
+  mutate(
+    
+    # Within-group standardized change
+    # Absolute value = magnitude only
+    d = abs(mean_change) / sd_change,
+    
+    # Probability of superiority
+    # Direction follows whichever mean is higher
+    P_superiority = ifelse(
+      
+      mean_post >= mean_pre,
+      
+      pnorm(
+        (mean_post - mean_pre) /
+          sqrt(sd_pre^2 + sd_post^2)
+      ),
+      
+      pnorm(
+        (mean_pre - mean_post) /
+          sqrt(sd_pre^2 + sd_post^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_post >= mean_pre,
+      "P(Post > Pre)",
+      "P(Pre > Post)"
+    )
+  )
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(
+          x,
+          mean = mu1,
+          sd = sd1
+        ),
+        dnorm(
+          x,
+          mean = mu2,
+          sd = sd2
+        )
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+data_3ST$OVL <- mapply(
+  calculate_ovl,
+  data_3ST$mean_pre,
+  data_3ST$sd_pre,
+  data_3ST$mean_post,
+  data_3ST$sd_post
+)
+
+# Annotation
+
+data_3ST <- data_3ST |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_superiority,
+      d,
+      OVL
+    )
+  )
+
+# Generate normal curves
+
+plot_data_3ST <- lapply(
+  seq_len(nrow(data_3ST)),
+  function(i) {
+    
+    row <- data_3ST[i, ]
+    
+    x_min <- min(
+      row$mean_pre - 3.5 * row$sd_pre,
+      row$mean_post - 3.5 * row$sd_post
+    )
+    
+    x_max <- max(
+      row$mean_pre + 5 * row$sd_pre,
+      row$mean_post + 5 * row$sd_post
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    pre <- dnorm(
+      x,
+      mean = row$mean_pre,
+      sd = row$sd_pre
+    )
+    
+    post <- dnorm(
+      x,
+      mean = row$mean_post,
+      sd = row$sd_post
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      Pre = pre,
+      Post = post,
+      overlap = pmin(pre, post)
+    )
+  }
+) |>
+  bind_rows()
+
+# Long format for curves
+
+plot_curves_3ST <- plot_data_3ST |>
+  pivot_longer(
+    cols = c(Pre, Post),
+    names_to = "group",
+    values_to = "density"
+  )
+
+# Mean lines
+
+mean_lines_3ST <- bind_rows(
+  
+  data_3ST |>
+    transmute(
+      variable,
+      group = "Pre",
+      x = mean_pre,
+      yend = dnorm(
+        mean_pre,
+        mean = mean_pre,
+        sd = sd_pre
+      )
+    ),
+  
+  data_3ST |>
+    transmute(
+      variable,
+      group = "Post",
+      x = mean_post,
+      yend = dnorm(
+        mean_post,
+        mean = mean_post,
+        sd = sd_post
+      )
+    )
+)
+
+# Annotation positions
+
+annotations_3ST <- data_3ST |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_pre - 4 * sd_pre,
+      mean_post - 4 * sd_post
+    ),
+    
+    x_max = max(
+      mean_pre + 4 * sd_pre,
+      mean_post + 4 * sd_post
+    ),
+    
+    x_position = x_min +
+      0.90 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_pre,
+        sd = sd_pre
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_post,
+        sd = sd_post
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+# Swedish labels
+
+bodycomp_labels <- c(
+  "Body Mass" = "Kroppsmassa (kg)",
+  "Fat Free Mass" = "Fettfri massa (kg)",
+  "Muscle Mass" = "Muskelmassa (kg)",
+  "Fat Mass" = "Fettmassa (kg)",
+  "Fat Percentage" = "Fettprocent (%)",
+  "Total Body Water" = "Totalt kroppsvatten (kg)"
+)
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data_3ST,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves_3ST,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines_3ST,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations_3ST,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 3.0
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "Pre" = "blue",
+      "Post" = "red"
+    ),
+    labels = c(
+      "Pre" = "3ST-Pre",
+      "Post" = "3ST-Post"
+    )
+  ) +
+  
+  # 2 x 3 panel
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    labeller = as_labeller(bodycomp_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.9
+
+# HIT vs 3ST: Pre - Body composition
+
+# Clear previous variables
+
+rm(list = ls())
+
+# Data from Table 3
+
+data_HIT <- data.frame(
+  
+  variable = c(
+    "Body Mass",
+    "Fat Free Mass",
+    "Muscle Mass",
+    "Fat Mass",
+    "Fat Percentage",
+    "Total Body Water"
+  ),
+  
+  mean = c(
+    68.58,
+    55.47,
+    52.69,
+    13.12,
+    19.31,
+    40.02
+  ),
+  
+  sd = c(
+    9.04,
+    9.28,
+    8.85,
+    4.13,
+    6.07,
+    6.59
+  ),
+  
+  n = 16
+)
+
+data_3ST <- data.frame(
+  
+  variable = c(
+    "Body Mass",
+    "Fat Free Mass",
+    "Muscle Mass",
+    "Fat Mass",
+    "Fat Percentage",
+    "Total Body Water"
+  ),
+  
+  mean = c(
+    73.30,
+    51.05,
+    48.49,
+    22.25,
+    30.34,
+    36.85
+  ),
+  
+  sd = c(
+    11.65,
+    9.03,
+    8.60,
+    5.07,
+    5.23,
+    6.53
+  ),
+  
+  n = 14
+)
+
+# Combine HIT and 3ST
+
+data <- data.frame(
+  
+  variable = data_HIT$variable,
+  
+  mean_HIT = data_HIT$mean,
+  sd_HIT = data_HIT$sd,
+  n_HIT = data_HIT$n,
+  
+  mean_3ST = data_3ST$mean,
+  sd_3ST = data_3ST$sd,
+  n_3ST = data_3ST$n
+)
+
+# Pooled SD
+
+data$SD_pooled <- sqrt(
+  (
+    (data$n_HIT - 1) * data$sd_HIT^2 +
+      (data$n_3ST - 1) * data$sd_3ST^2
+  ) /
+    (
+      data$n_HIT +
+        data$n_3ST -
+        2
+    )
+)
+
+# Cohen's d
+
+# Absolute value = magnitude only
+
+data$d <- abs(
+  data$mean_HIT - data$mean_3ST
+) / data$SD_pooled
+
+# Probability of superiority
+
+# Direction follows the group with the higher mean
+
+data <- data |>
+  mutate(
+    
+    P_superiority = ifelse(
+      
+      mean_HIT >= mean_3ST,
+      
+      pnorm(
+        (mean_HIT - mean_3ST) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      ),
+      
+      pnorm(
+        (mean_3ST - mean_HIT) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_HIT >= mean_3ST,
+      "P(HIT > 3ST)",
+      "P(3ST > HIT)"
+    )
+  )
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(
+          x,
+          mean = mu1,
+          sd = sd1
+        ),
+        dnorm(
+          x,
+          mean = mu2,
+          sd = sd2
+        )
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+data$OVL <- mapply(
+  calculate_ovl,
+  data$mean_HIT,
+  data$sd_HIT,
+  data$mean_3ST,
+  data$sd_3ST
+)
+
+# Annotation
+
+data <- data |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_superiority,
+      d,
+      OVL
+    )
+  )
+
+# Generate normal curves
+
+plot_data <- lapply(
+  seq_len(nrow(data)),
+  function(i) {
+    
+    row <- data[i, ]
+    
+    x_min <- min(
+      row$mean_HIT - 3.5 * row$sd_HIT,
+      row$mean_3ST - 3.5 * row$sd_3ST
+    )
+    
+    x_max <- max(
+      row$mean_HIT + 5 * row$sd_HIT,
+      row$mean_3ST + 5 * row$sd_3ST
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    hit <- dnorm(
+      x,
+      mean = row$mean_HIT,
+      sd = row$sd_HIT
+    )
+    
+    st3 <- dnorm(
+      x,
+      mean = row$mean_3ST,
+      sd = row$sd_3ST
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      HIT = hit,
+      ST3 = st3,
+      overlap = pmin(hit, st3)
+    )
+  }
+) |>
+  bind_rows()
+
+# Long format for curves
+
+plot_curves <- plot_data |>
+  pivot_longer(
+    cols = c(HIT, ST3),
+    names_to = "group",
+    values_to = "density"
+  )
+
+# Mean lines
+
+mean_lines <- bind_rows(
+  
+  data |>
+    transmute(
+      variable,
+      group = "HIT",
+      x = mean_HIT,
+      yend = dnorm(
+        mean_HIT,
+        mean = mean_HIT,
+        sd = sd_HIT
+      )
+    ),
+  
+  data |>
+    transmute(
+      variable,
+      group = "ST3",
+      x = mean_3ST,
+      yend = dnorm(
+        mean_3ST,
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    )
+)
+
+# Annotation positions
+
+annotations <- data |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_HIT - 4 * sd_HIT,
+      mean_3ST - 4 * sd_3ST
+    ),
+    
+    x_max = max(
+      mean_HIT + 4 * sd_HIT,
+      mean_3ST + 4 * sd_3ST
+    ),
+    
+    x_position = x_min +
+      0.95 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_HIT,
+        sd = sd_HIT
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+# Swedish labels
+
+bodycomp_labels <- c(
+  "Body Mass" = "Kroppsmassa (kg)",
+  "Fat Free Mass" = "Fettfri massa (kg)",
+  "Muscle Mass" = "Muskelmassa (kg)",
+  "Fat Mass" = "Fettmassa (kg)",
+  "Fat Percentage" = "Fettprocent (%)",
+  "Total Body Water" = "Totalt kroppsvatten (kg)"
+)
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 2.8
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "HIT" = "blue",
+      "ST3" = "red"
+    ),
+    labels = c(
+      "HIT" = "Pre-HIT",
+      "ST3" = "Pre-3ST"
+    )
+  ) +
+  
+  # 2 x 3 panel
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    labeller = as_labeller(bodycomp_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
+
+
+##############################
+
+
+
+##############################
+
+# Exempel 2.10
+
+# HIT vs 3ST: Post - Body composition
+
+# Clear previous variables
+
+rm(list = ls())
+
+# Data from Table 3
+
+data_HIT <- data.frame(
+  
+  variable = c(
+    "Body Mass",
+    "Fat Free Mass",
+    "Muscle Mass",
+    "Fat Mass",
+    "Fat Percentage",
+    "Total Body Water"
+  ),
+  
+  mean = c(
+    69.04,
+    55.88,
+    53.09,
+    13.16,
+    19.11,
+    40.27
+  ),
+  
+  sd = c(
+    9.35,
+    8.80,
+    8.40,
+    4.53,
+    5.98,
+    6.21
+  ),
+  
+  n = 16
+)
+
+data_3ST <- data.frame(
+  
+  variable = c(
+    "Body Mass",
+    "Fat Free Mass",
+    "Muscle Mass",
+    "Fat Mass",
+    "Fat Percentage",
+    "Total Body Water"
+  ),
+  
+  mean = c(
+    74.04,
+    50.50,
+    47.95,
+    23.54,
+    31.92,
+    36.40
+  ),
+  
+  sd = c(
+    11.07,
+    9.16,
+    8.73,
+    4.77,
+    5.21,
+    6.55
+  ),
+  
+  n = 14
+)
+
+# Combine HIT and 3ST
+
+data <- data.frame(
+  
+  variable = data_HIT$variable,
+  
+  mean_HIT = data_HIT$mean,
+  sd_HIT = data_HIT$sd,
+  n_HIT = data_HIT$n,
+  
+  mean_3ST = data_3ST$mean,
+  sd_3ST = data_3ST$sd,
+  n_3ST = data_3ST$n
+)
+
+# Pooled SD
+
+data$SD_pooled <- sqrt(
+  (
+    (data$n_HIT - 1) * data$sd_HIT^2 +
+      (data$n_3ST - 1) * data$sd_3ST^2
+  ) /
+    (
+      data$n_HIT +
+        data$n_3ST -
+        2
+    )
+)
+
+# Cohen's d
+
+# Absolute value = magnitude only
+
+data$d <- abs(
+  data$mean_HIT - data$mean_3ST
+) / data$SD_pooled
+
+# Probability of superiority
+
+# Direction follows the group with the higher mean
+
+data <- data |>
+  mutate(
+    
+    P_superiority = ifelse(
+      
+      mean_HIT >= mean_3ST,
+      
+      pnorm(
+        (mean_HIT - mean_3ST) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      ),
+      
+      pnorm(
+        (mean_3ST - mean_HIT) /
+          sqrt(sd_HIT^2 + sd_3ST^2)
+      )
+    ),
+    
+    superiority_label = ifelse(
+      mean_HIT >= mean_3ST,
+      "P(HIT > 3ST)",
+      "P(3ST > HIT)"
+    )
+  )
+
+# OVL function
+
+calculate_ovl <- function(mu1, sd1, mu2, sd2) {
+  
+  lower <- min(
+    mu1 - 5 * sd1,
+    mu2 - 5 * sd2
+  )
+  
+  upper <- max(
+    mu1 + 5 * sd1,
+    mu2 + 5 * sd2
+  )
+  
+  integrate(
+    function(x) {
+      pmin(
+        dnorm(
+          x,
+          mean = mu1,
+          sd = sd1
+        ),
+        dnorm(
+          x,
+          mean = mu2,
+          sd = sd2
+        )
+      )
+    },
+    lower = lower,
+    upper = upper
+  )$value
+}
+
+data$OVL <- mapply(
+  calculate_ovl,
+  data$mean_HIT,
+  data$sd_HIT,
+  data$mean_3ST,
+  data$sd_3ST
+)
+
+# Annotation
+
+data <- data |>
+  mutate(
+    
+    label = sprintf(
+      "%s = %.2f\nCohen's d = %.2f\nOVL = %.2f",
+      superiority_label,
+      P_superiority,
+      d,
+      OVL
+    )
+  )
+
+# Generate normal curves
+
+plot_data <- lapply(
+  seq_len(nrow(data)),
+  function(i) {
+    
+    row <- data[i, ]
+    
+    x_min <- min(
+      row$mean_HIT - 3.5 * row$sd_HIT,
+      row$mean_3ST - 3.5 * row$sd_3ST
+    )
+    
+    x_max <- max(
+      row$mean_HIT + 5 * row$sd_HIT,
+      row$mean_3ST + 5 * row$sd_3ST
+    )
+    
+    x <- seq(
+      x_min,
+      x_max,
+      length.out = 1000
+    )
+    
+    hit <- dnorm(
+      x,
+      mean = row$mean_HIT,
+      sd = row$sd_HIT
+    )
+    
+    st3 <- dnorm(
+      x,
+      mean = row$mean_3ST,
+      sd = row$sd_3ST
+    )
+    
+    data.frame(
+      variable = row$variable,
+      x = x,
+      HIT = hit,
+      ST3 = st3,
+      overlap = pmin(hit, st3)
+    )
+  }
+) |>
+  bind_rows()
+
+# Long format for curves
+
+plot_curves <- plot_data |>
+  pivot_longer(
+    cols = c(HIT, ST3),
+    names_to = "group",
+    values_to = "density"
+  )
+
+# Mean lines
+
+mean_lines <- bind_rows(
+  
+  data |>
+    transmute(
+      variable,
+      group = "HIT",
+      x = mean_HIT,
+      yend = dnorm(
+        mean_HIT,
+        mean = mean_HIT,
+        sd = sd_HIT
+      )
+    ),
+  
+  data |>
+    transmute(
+      variable,
+      group = "ST3",
+      x = mean_3ST,
+      yend = dnorm(
+        mean_3ST,
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    )
+)
+
+# Annotation positions
+
+annotations <- data |>
+  rowwise() |>
+  mutate(
+    
+    x_min = min(
+      mean_HIT - 4 * sd_HIT,
+      mean_3ST - 4 * sd_3ST
+    ),
+    
+    x_max = max(
+      mean_HIT + 4 * sd_HIT,
+      mean_3ST + 4 * sd_3ST
+    ),
+    
+    x_position = x_min +
+      0.95 * (x_max - x_min),
+    
+    max_density = max(
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_HIT,
+        sd = sd_HIT
+      ),
+      
+      dnorm(
+        seq(
+          x_min,
+          x_max,
+          length.out = 1000
+        ),
+        mean = mean_3ST,
+        sd = sd_3ST
+      )
+    ),
+    
+    y_position = max_density * 0.4
+  ) |>
+  ungroup()
+
+# Swedish labels
+
+bodycomp_labels <- c(
+  "Body Mass" = "Kroppsmassa (kg)",
+  "Fat Free Mass" = "Fettfri massa (kg)",
+  "Muscle Mass" = "Muskelmassa (kg)",
+  "Fat Mass" = "Fettmassa (kg)",
+  "Fat Percentage" = "Fettprocent (%)",
+  "Total Body Water" = "Totalt kroppsvatten (kg)"
+)
+
+# Plot
+
+ggplot() +
+  
+  # OVL
+  
+  geom_ribbon(
+    data = plot_data,
+    aes(
+      x = x,
+      ymin = 0,
+      ymax = overlap
+    ),
+    fill = "grey70",
+    alpha = 0.6
+  ) +
+  
+  # Normal curves
+  
+  geom_line(
+    data = plot_curves,
+    aes(
+      x = x,
+      y = density,
+      colour = group
+    ),
+    linewidth = 1.2
+  ) +
+  
+  # Mean lines
+  
+  geom_segment(
+    data = mean_lines,
+    aes(
+      x = x,
+      xend = x,
+      y = 0,
+      yend = yend,
+      colour = group
+    ),
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Effect-size annotations
+  
+  geom_text(
+    data = annotations,
+    aes(
+      x = x_position,
+      y = y_position,
+      label = label
+    ),
+    hjust = 0.5,
+    vjust = 0,
+    size = 2.8
+  ) +
+  
+  # Colours
+  
+  scale_colour_manual(
+    name = NULL,
+    values = c(
+      "HIT" = "blue",
+      "ST3" = "red"
+    ),
+    labels = c(
+      "HIT" = "Post-HIT",
+      "ST3" = "Post-3ST"
+    )
+  ) +
+  
+  # 2 x 3 panel
+  
+  facet_wrap(
+    ~variable,
+    scales = "free",
+    ncol = 3,
+    labeller = as_labeller(bodycomp_labels)
+  ) +
+  
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.01))
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid = element_blank(),
+    
+    axis.line = element_line(
+      colour = "black"
+    ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+    
+    legend.position = "top",
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    )
+  )
+
 ##############################
