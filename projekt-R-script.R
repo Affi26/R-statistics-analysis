@@ -1,5 +1,5 @@
 
-# Skript som används för att genera grafer till till "projekt.tex" filen.
+# Skript som används för att genera grafer till "vetenskap-projekt".
 
 setwd("C:/R-statistics-analysis")
 
